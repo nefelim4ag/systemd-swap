@@ -5,6 +5,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+# Backup config
 if [ -f /run/systemd/swap/swap.conf ]; then
     source /run/systemd/swap/swap.conf
 else
@@ -18,6 +19,7 @@ else
     fi
 fi
 
+# Check if function already be called
 started(){
     mkdir -p /run/systemd/swap/
     if [ -f /run/systemd/swap/$1 ]; then
@@ -27,13 +29,14 @@ started(){
     fi
 }
 
+# ZRam part
 enabled_zram(){
     modprobe zram num_devices=4 || {
         echo zram module does not exist
         zram_size=""
     }
     if [ -z $zram_size ]; then
-        echo zram disabled
+        echo zram disabled in config
         return 1
     fi
 }
@@ -74,6 +77,7 @@ enabled_swapf(){
         }
     fi
     if [ -z $swapf_size ]; then
+        echo swap file disabled
         return 1
     fi
     if [ -z $swapf_path ]; then
@@ -102,7 +106,7 @@ deatach_swapf(){
         losetup -d $loopdev
         loopdev=$(swapon -s | grep loop | awk '{print $1}' | tail -n 1)
     done
-    swapf_directly=$(swapon | grep $swapf_path | awk '{print $1}' | tail -n 1 )
+    swapf_directly=$(swapon -s | grep $swapf_path | awk '{print $1}' | tail -n 1 )
     [ ! -z $swapf_directly ] && swapoff $swapf_path
     rm $swapf_path
     rm /run/systemd/swap/swapf
@@ -110,13 +114,13 @@ deatach_swapf(){
 
 case $1 in
     start)
-      started zram && enabled_zram && create_zram
-      started swapf && enabled_swapf&& create_swapf
+      started zram  && enabled_zram  && create_zram
+      started swapf && enabled_swapf && create_swapf
     ;;
 
     stop)
-      started zram || enabled_zram && deatach_zram
+      started zram  || enabled_zram  && deatach_zram
       started swapf || enabled_swapf && deatach_swapf
-      rm /run/systemd-swap.conf
+      rm /run/systemd/swap/swap.conf
     ;;
 esac
