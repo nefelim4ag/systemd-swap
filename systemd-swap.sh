@@ -5,13 +5,13 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-if [ -f /run/systemd-swap.conf ]; then
-    source /run/systemd-swap.conf
+if [ -f /run/systemd/swap/swap.conf ]; then
+    source /run/systemd/swap/swap.conf
 else
     if [ -f /etc/systemd-swap.conf ]; then
         source /etc/systemd-swap.conf
-        echo
-        cp /etc/systemd-swap.conf /run/systemd-swap.conf
+        mkdir -p /run/systemd/swap/
+        cp /etc/systemd-swap.conf /run/systemd/swap/swap.conf
     else
         echo config /etc/systemd-swap.conf deleted
         exit 1
@@ -19,7 +19,8 @@ else
 fi
 
 started(){
-    if [ -f /run/systemd-swap-started ]; then
+    mkdir -p /run/systemd/swap/
+    if [ -f /run/systemd/swap/$1 ]; then
         return 1
     else
         return 0
@@ -38,35 +39,30 @@ enabled_zram(){
 }
 
 create_zram(){
-    size=$(($zram_size/4))
-    echo ${size}K > /sys/block/zram0/disksize
-    echo ${size}K > /sys/block/zram1/disksize
-    echo ${size}K > /sys/block/zram2/disksize
-    echo ${size}K > /sys/block/zram3/disksize
-
-    mkswap /dev/zram0
-    mkswap /dev/zram1
-    mkswap /dev/zram2
-    mkswap /dev/zram3
-
-    swapon /dev/zram0 -p 32000
-    swapon /dev/zram1 -p 32000
-    swapon /dev/zram2 -p 32000
-    swapon /dev/zram3 -p 32000
+    cpu_count=$(grep -c ^processor /proc/cpuinfo)
+    size=$(($zram_size/$cpu_count))
+    n=0
+    while [[ $n < $cpu_count ]]
+    do
+        echo ${size}K > /sys/block/zram${n}/disksize
+        mkswap /dev/zram${n}
+        swapon /dev/zram${n} -p 32000
+        n=$(($n+1))
+    done
+    touch /run/systemd/swap/zram
 }
 
 deatach_zram(){
-    swapoff /dev/zram0
-    swapoff /dev/zram1
-    swapoff /dev/zram2
-    swapoff /dev/zram3
-
-    echo 1 > /sys/block/zram0/reset
-    echo 1 > /sys/block/zram1/reset
-    echo 1 > /sys/block/zram2/reset
-    echo 1 > /sys/block/zram3/reset
-
+    cpu_count=$(grep -c ^processor /proc/cpuinfo)
+    n=0
+    while [[ $n < $cpu_count ]]
+    do
+        swapoff /dev/zram${n}
+        echo 1 > /sys/block/zram${n}/reset
+        n=$(($n+1))
+    done
     modprobe -r zram
+    rm /run/systemd/swap/zram
 }
 
 enabled_swapf(){
@@ -74,6 +70,7 @@ enabled_swapf(){
         touch $swapf_path || {
             echo Path $swapf_path wrong
             swapf_path=""
+            swapf_size=""
         }
     fi
     if [ -z $swapf_size ]; then
@@ -86,31 +83,40 @@ enabled_swapf(){
 }
 
 create_swapf(){
-    loopdev=$(losetup -f)
     truncate -s $swapf_size $swapf_path
-    losetup $loopdev $swapf_path
+    chmod 0600 $swapf_path
     mkswap $swapf_path
-    swapon $loopdev -p 0
+    swapon $swapf_path -p 0 || {
+        loopdev=$(losetup -f)
+        losetup $loopdev $swapf_path
+        swapon $loopdev -p 0
+    }
+    touch /run/systemd/swap/swapf
 }
 
 deatach_swapf(){
-    losetup -d $(losetup | grep $swapf_path | awk '{print $1}')
-    swapoff -a
+    loopdev=$(swapon -s | grep loop | awk '{print $1}' | tail -n 1)
+    while [ ! -z $loopdev ]
+    do
+        swapoff $loopdev
+        losetup -d $loopdev
+        loopdev=$(swapon -s | grep loop | awk '{print $1}' | tail -n 1)
+    done
+    swapf_directly=$(swapon | grep $swapf_path | awk '{print $1}' | tail -n 1 )
+    [ ! -z $swapf_directly ] && swapoff $swapf_path
     rm $swapf_path
+    rm /run/systemd/swap/swapf
 }
 
 case $1 in
     start)
-      started && enabled_zram && create_zram
-      started && enabled_swapf&& create_swapf
-      touch /run/systemd-swap-started
+      started zram && enabled_zram && create_zram
+      started swapf && enabled_swapf&& create_swapf
     ;;
 
     stop)
-      started ||
-      enabled_zram && deatach_zram
-      enabled_swapf && deatach_swapf
+      started zram || enabled_zram && deatach_zram
+      started swapf || enabled_swapf && deatach_swapf
       rm /run/systemd-swap.conf
-      rm /run/systemd-swap-started
     ;;
 esac
