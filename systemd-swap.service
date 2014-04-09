@@ -1,0 +1,13 @@
+[Unit]
+Description=Manage zram and swap file spaces
+After=local-fs.target
+Before=swap.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/systemd/scripts/systemd-swap.sh start
+ExecStop=/usr/lib/systemd/scripts/systemd-swap.sh stop
+
+[Install]
+Alias=local-fs.target.wants/systemd-swap.service
