@@ -1,6 +1,7 @@
 systemd-swap
 Simple script to auto create zram and swap file (through loop) devices and swapon it to system
-Now ZRam do this - autocreate numbers of devices = numbers of CPU.
+Now ZRam does this - autocreate numbers of devices = numbers of 
+CPU.
 It configurable in /etc/systemd-swap.conf
 /etc/systemd/system/systemd-swap.service
 /etc/systemd-swap.conf
