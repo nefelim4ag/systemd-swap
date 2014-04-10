@@ -36,7 +36,7 @@ enabled_zram(){
         zram_size=""
     }
     if [ -z $zram_size ]; then
-        echo zram disabled in config
+        echo zram disabled
         return 1
     fi
 }
@@ -69,6 +69,11 @@ deatach_zram(){
 }
 
 enabled_swapf(){
+    modprobe loop || {
+        echo loop module does not exist
+        swapf_path=""
+        swapf_size=""
+    }
     if [ ! -z $swapf_path ]; then
         touch $swapf_path || {
             echo Path $swapf_path wrong
