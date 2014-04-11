@@ -75,18 +75,24 @@ test_swapf(){
         swapf_path=""
         swapf_size=""
     }
+    if [[ "$swapf_parse_fstab" == "1" ]]; then
+        # search swap lines
+        swap_string="$(cat /etc/fstab | grep swap)"
+        # check, swap lines commented?
+        swap_string_not_commented="$(echo $swap_string | grep '#')"
+        # if line exist and not commented - disable swapf
+        [ -z $swap_string_not_commented ] && [ ! -z $swap_string ] && return 1
+    fi
     if [ ! -z $swapf_path ]; then
         touch $swapf_path || {
             echo Path $swapf_path wrong
-            swapf_path=""
-            swapf_size=""
+            return 1
         }
-    fi
-    if [ -z $swapf_size ]; then
+    else
         echo swap file disabled
         return 1
     fi
-    if [ -z $swapf_path ]; then
+    if [ -z $swapf_size ]; then
         echo swap file disabled
         return 1
     fi
@@ -96,11 +102,9 @@ create_swapf(){
     truncate -s $swapf_size $swapf_path
     chmod 0600 $swapf_path
     mkswap $swapf_path
-    swapon $swapf_path -p 0 || {
-        loopdev=$(losetup -f)
-        losetup $loopdev $swapf_path
-        swapon $loopdev -p 0
-    }
+    loopdev=$(losetup -f)
+    losetup $loopdev $swapf_path
+    swapon $loopdev -p 0
     touch /run/systemd/swap/swapf
 }
 
@@ -112,8 +116,6 @@ deatach_swapf(){
         losetup -d $loopdev
         loopdev=$(swapon -s | grep loop | awk '{print $1}' | tail -n 1)
     done
-    swapf_directly=$(swapon -s | grep $swapf_path | awk '{print $1}' | tail -n 1 )
-    [ ! -z $swapf_directly ] && swapoff $swapf_path
     rm $swapf_path
     rm /run/systemd/swap/swapf
 }
