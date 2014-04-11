@@ -5,6 +5,10 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+#CPU count = Zram devices count
+cpu_count=$(grep -c ^processor /proc/cpuinfo)
+ram_size=$(free -o | grep -i Mem | awk '{print $2}')
+
 # Backup config
 if [ -f /run/systemd/swap/swap.conf ]; then
     source /run/systemd/swap/swap.conf
@@ -21,7 +25,6 @@ fi
 
 # Check if function already be called
 started(){
-    mkdir -p /run/systemd/swap/
     if [ -f /run/systemd/swap/$1 ]; then
         return 1
     else
@@ -30,8 +33,8 @@ started(){
 }
 
 # ZRam part
-enabled_zram(){
-    modprobe zram num_devices=4 || {
+test_zram(){
+    modprobe zram num_devices=$cpu_count || {
         echo zram module does not exist
         zram_size=""
     }
@@ -42,7 +45,6 @@ enabled_zram(){
 }
 
 create_zram(){
-    cpu_count=$(grep -c ^processor /proc/cpuinfo)
     size=$(($zram_size/$cpu_count))
     n=0
     while [[ $n < $cpu_count ]]
@@ -56,7 +58,6 @@ create_zram(){
 }
 
 deatach_zram(){
-    cpu_count=$(grep -c ^processor /proc/cpuinfo)
     n=0
     while [[ $n < $cpu_count ]]
     do
@@ -68,7 +69,7 @@ deatach_zram(){
     rm /run/systemd/swap/zram
 }
 
-enabled_swapf(){
+test_swapf(){
     modprobe loop || {
         echo loop module does not exist
         swapf_path=""
@@ -119,13 +120,13 @@ deatach_swapf(){
 
 case $1 in
     start)
-      started zram  && enabled_zram  && create_zram
-      started swapf && enabled_swapf && create_swapf
+      started zram  && test_zram  && create_zram
+      started swapf && test_swapf && create_swapf
     ;;
 
     stop)
-      started zram  || enabled_zram  && deatach_zram
-      started swapf || enabled_swapf && deatach_swapf
+      started zram  || test_zram  && deatach_zram
+      started swapf || test_swapf && deatach_swapf
       rm /run/systemd/swap/swap.conf
     ;;
 esac
