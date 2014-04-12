@@ -38,7 +38,7 @@ test_zram(){
         echo zram module does not exist
         zram_size=""
     }
-    if [ -z $zram_size ]; then
+    if [ -z "$zram_size" ]; then
         echo zram disabled
         return 1
     fi
@@ -47,7 +47,7 @@ test_zram(){
 create_zram(){
     size=$(($zram_size/$cpu_count))
     n=0
-    while [[ $n < $cpu_count ]]
+    while [[ "$n" < "$cpu_count" ]]
     do
         echo ${size}K > /sys/block/zram${n}/disksize
         mkswap /dev/zram${n}
@@ -59,7 +59,7 @@ create_zram(){
 
 deatach_zram(){
     n=0
-    while [[ $n < $cpu_count ]]
+    while [[ "$n" < "$cpu_count" ]]
     do
         swapoff /dev/zram${n}
         echo 1 > /sys/block/zram${n}/reset
@@ -81,10 +81,10 @@ test_swapf(){
         # check, swap lines commented?
         swap_string_not_commented="$(echo $swap_string | grep '#')"
         # if line exist and not commented - disable swapf
-        [ -z $swap_string_not_commented ] && [ ! -z $swap_string ] && return 1
+        [ -z "$swap_string_not_commented" ] && [ ! -z "$swap_string" ] && return 1
     fi
-    if [ ! -z $swapf_path ]; then
-        touch $swapf_path || {
+    if [ ! -z "$swapf_path" ]; then
+        touch "$swapf_path" || {
             echo Path $swapf_path wrong
             return 1
         }
@@ -92,7 +92,7 @@ test_swapf(){
         echo swap file disabled
         return 1
     fi
-    if [ -z $swapf_size ]; then
+    if [ -z "$swapf_size" ]; then
         echo swap file disabled
         return 1
     fi
