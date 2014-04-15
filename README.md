@@ -10,7 +10,3 @@ Source:
 Using:
 # systemctl enable systemd-swap
 # systemctl start systemd-swap
-
-TODO:
-Dynamic increasing size of swap file;
-Auto using direct method (without loop) to using swap files on friendly for swap file fs (ext(4,3,2),xfs & etc);
