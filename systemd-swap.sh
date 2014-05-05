@@ -61,12 +61,11 @@ deatach_zram(){
         swapoff /dev/zram$n
         echo 1 > /sys/block/zram$n/reset
     done
-    modprobe -r zram
     rm $work_dir/zram
 }
 
 create_swapf(){
-    modprobe loop
+    modprobe loop max_loop=10 max_part=2
     if [ "$swapf_parse_fstab" == "1" ]; then
         # search swap lines
         # grep return 1 if line not found
@@ -87,39 +86,55 @@ create_swapf(){
         return 0
     fi
 
-    truncate -s $swapf_size $swapf_path || return 0
-    chmod 0600 $swapf_path
-    mkswap -L loopswap $swapf_path
+    if [ ! -f "$swapf_path" ]; then
+        truncate -s "$swapf_size" "$swapf_path" || return 0
+        chmod 0600 "$swapf_path"
+        mkswap -L loopswap "$swapf_path"
+    else
+        if [ ! -z $reset ]; then
+            truncate -s "$swapf_size" "$swapf_path" || return 0
+            chmod 0600 "$swapf_path"
+            mkswap -L loopswap "$swapf_path"
+        fi
+    fi
+
+
     loopdev=`losetup -f`
-    losetup $loopdev $swapf_path
-    swapon $loopdev
-    echo $loopdev >> $work_dir/swapf
+    losetup "$loopdev" "$swapf_path"
+    swapon "$loopdev"
+    echo "$loopdev" > "$work_dir/swapf"
 }
 
 deatach_swapf(){
-    for loopdev in `cat $work_dir/swapf`
-    do
-        swapoff $loopdev
-        losetup -d $loopdev
-    done
+    loopdev=`cat "$work_dir/swapf"`
+    swapoff "$loopdev"
+    losetup -d "$loopdev"
     # rm swapfile and started status
-    rm $swapf_path $work_dir/swapf
+    [ ! -z "$reset" ] && rm "$swapf_path"
+    rm "$work_dir/swapf"
 }
 
-set_swappiness(){
-    if [ ! -z "$swappiness" ]; then
-        sysctl vm.swappiness=$swappiness
-    else
-        return 0
+gen_modprobe(){
+    modfile=/etc/modprobe.d/90-systemd-swap.conf
+    [ ! -z "$reset" ] && rm $modfile
+    if [ ! -f "$modfile" ]; then
+        cpu_count=`grep -c ^processor /proc/cpuinfo`
+        echo options zram num_devices=$cpu_count >  "$modfile"
+        echo options loop max_loop=10 max_part=2 >> "$modfile"
     fi
 }
 
 case $1 in
     start)
         config_manage start
+        gen_modprobe
         started zram  && create_zram
         started swapf && create_swapf
-        set_swappiness
+        if [ ! -z "$swappiness" ]; then
+            sysctl vm.swappiness=$swappiness
+        else
+            exit 0
+        fi
     ;;
 
     stop)
