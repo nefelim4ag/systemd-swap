@@ -1,17 +1,17 @@
 # Maintainer: Timofey Titovets <Nefelim4ag@gmail.com>
 pkgname=systemd-swap
-pkgver=2.05
-pkgrel=1
+pkgver=2.10
+pkgrel=0
 pkgdesc="This is script for creating hybrid swap space from zram and swap file. Swap file - auto create dinamic growing swap file and mount it via loop. For enable: sudo systemctl enable systemd-swap. Config in /etc/systemd-swap.cfg"
 arch=('any')
 url="https://github.com/TimofeyTitovets/systemd-swap"
 license=('GPL')
 source=(systemd-swap.* README.md)
 depends=('systemd')
-md5sums=('de47f112ad443e7e70c00327276e2352'
-         '8ded2e8d30c737a150d2d6d7ff80f0f1'
-         '60b0b9430afbc0ec169e9e8c2dcb3e8b'
-         'f34332367165b34fb59bcd725604eb5f')
+md5sums=('9f65d9f7a55ec7cf4c8dea00928ec748'
+         'e8a3a477e5d4d4f062bdf8f551faa5fc'
+         '66e2e75a27fbcc992e04396cc7902836'
+         '948b246d2d6d40b0a0713c4e1cf24bee')
 
 package() {
     install -Dm644 systemd-swap.service $pkgdir/etc/systemd/system/systemd-swap.service

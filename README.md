@@ -11,5 +11,4 @@ Source:
 Using:
 ```
 # systemctl enable systemd-swap
-# systemctl start systemd-swap || reboot
 ```
