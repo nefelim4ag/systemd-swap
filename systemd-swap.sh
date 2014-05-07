@@ -23,14 +23,14 @@ deatach_zram(){
 }
 
 create_swapf(){
-    # swapf_size=$1
-    if [ -z $1 ] || [ -z ${swapf_path[1]} ]; then
+    s=$1 # swap_size=$1
+    if [ -z $s ] || [ -z ${swapf_path[0]} ]; then
         echo swap file disabled; return 0
     fi
     for n in ${swapf_path[@]}
     do
         if [ ! -f "$n" ]; then
-            truncate -s "$1"   "$n" || return 0
+            truncate -s "$s"   "$n" || return 0
             chmod 0600  "$n"                     &
             mkswap      "$n"
         fi
@@ -97,7 +97,7 @@ if  [ -f $config ]; then
             fi
         done
         if [ "$devs_off_swapf" == "1" ]; then
-            [ -z ${swap_dev[1]} ] || unset swapf_size swapf_path
+            [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
         fi
     fi
     if [ ! -z $zram_size ] && [ ! -z $cpu_count ]; then
@@ -107,10 +107,10 @@ if  [ -f $config ]; then
     [ -z $swappiness      ] || echo swappiness=$swappiness >> $cached &
     [ -z $zram_size       ] || echo zram_size=$zram_size   >> $cached &
     [ -z $swapf_size      ] || echo swapf_size=$swapf_size >> $cached &
-    [ -z ${swapf_path[1]} ] || \
+    [ -z ${swapf_path[0]} ] || \
           echo export "swapf_path=(${swapf_path[@]})" >> $cached &
-    [ -z ${swap_devs[1]}  ] || \
-          echo "swap_dev=(${swap_dev[@]})"            >> $cached &
+    [ -z ${swap_devs[0]}  ] || \
+          echo export "swap_dev=(${swap_dev[@]})"     >> $cached &
     if [ ! -f "$modfile" ]; then
         echo options zram num_devices=$cpu_count >  $modfile
         echo options loop max_loop=10 max_part=4 >> $modfile
