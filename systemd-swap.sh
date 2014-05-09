@@ -1,66 +1,61 @@
 #!/bin/bash -e
-# $1 - zram_size | $2 - cpu_count
 create_zram(){
-    [ -z "$1" ] && echo zram disabled && return 0
-    [ -f /dev/zram0 ] || modprobe zram num_devices=$2
-    tmp=$(($2-1))
-    for n in `seq 0 $tmp`
-    do
-        echo "$n" >> /run/lock/systemd-swap.zram &
-        echo ${1}K > /sys/block/zram$n/disksize
-        mkswap /dev/zram$n
-        swapon -p 32767 /dev/zram$n              &
+    i=$zram_size
+    [ -z "$i" ] && echo zram disabled && return 0
+    [ -f /dev/zram0 ] || modprobe zram num_devices=$cpu_count
+    A=() B=() tmp=$(($cpu_count-1))
+    for n in `seq 0 $tmp`; do
+        echo ${i}K > /sys/block/zram$n/disksize
+        mkswap /dev/zram$n &
+        B=( ${B[@]} $n )
+        A=( ${A[@]} /dev/zram$n )
     done
+    echo ${B[@]} >> /run/lock/systemd-swap.zram
+    wait && swapon -p 32767 ${A[@]}
 }
 
 deatach_zram(){
-    for n in `cat /run/lock/systemd-swap.zram`
-    do
+    for n in `cat /run/lock/systemd-swap.zram`; do
         swapoff /dev/zram$n
-        echo 1 > /sys/block/zram$n/reset         &
+        echo 1 > /sys/block/zram$n/reset &
     done
     rm "/run/lock/systemd-swap.zram"
 }
 
 create_swapf(){
-    s=$1 # swap_size=$1
-    if [ -z $s ] || [ -z ${swapf_path[0]} ]; then
-        echo swap file disabled; return 0
-    fi
-    for n in ${swapf_path[@]}
-    do
+    [ -z ${swapf_path[0]} ] && echo swap file disabled && return 0
+    [ -z $swapf_size ]      && echo swap file disabled && return 0
+    A=()
+    for n in ${swapf_path[@]}; do
         if [ ! -f "$n" ]; then
-            truncate -s "$s"   "$n" || return 0
-            chmod 0600  "$n"                     &
-            mkswap      "$n"
+            truncate -s $swapf_size $n || return 0
+            chmod 0600 $n &
+            mkswap $n     &
         fi
         lp=`losetup -f`
-        losetup $lp $n && swapon $lp             &
-        echo $lp >> /run/lock/systemd-swap.swapf  &
+        A=(${A[@]} $lp)
+        losetup $lp $n &
     done
+    wait
+    swapon ${A[@]} &
+    echo ${A[@]} > /run/lock/systemd-swap.swapf
 }
 
 deatach_swapf(){
-    for n in `cat /run/lock/systemd-swap.swapf`
-    do
-        swapoff "$n" && losetup -d $n            &
-    done
+    A=(`cat /run/lock/systemd-swap.swapf`)
+    swapoff ${A[@]}
+    losetup -d ${A[@]} &
     rm /run/lock/systemd-swap.swapf
 }
 
 mount_swapdev(){
-    [ -z $1 ] && return 0
-    for n in $@
-    do
-        swapon $n
-        echo $n > /run/lock/systemd-swap.dev     &
-    done
+    [ -z ${swap_dev[0]} ] && return 0
+    swapon -p 1 ${swap_dev[@]}
+    echo ${swap_dev[@]} > /run/lock/systemd-swap.dev
 }
 unmount_swapdev(){
-    for n in `cat /run/lock/systemd-swap.dev`
-    do
-        swapoff $n                               &
-    done
+    A=(`cat /run/lock/systemd-swap.dev`)
+    swapoff ${A[@]}
     rm /run/lock/systemd-swap.dev
 }
 ################################################################################
@@ -75,42 +70,41 @@ if  [ -f $config ]; then
     cpu_count=`grep -c ^processor /proc/cpuinfo`
     ram_size=`grep MemTotal: /proc/meminfo | awk '{print $2}'`
     . "$config"
-    if [ "$parse_fstab" == "1" ] && grep swap /etc/fstab; then
-        if grep swap /etc/fstab | grep '#'; then
-                :
-            else
-                unset swapf_size swapf_path swap_devs
-                echo Swap already specified in fstab
+    tmp="`grep swap /etc/fstab || :`"
+    if [ ! -z "$parse_fstab" ] && [ ! -z "$tmp" ]; then
+        tmp="`echo $tmp | grep '#' || :`"
+        if [ ! -z "$tmp" ]; then
+            unset swapf_size swapf_path swap_devs tmp
+            echo Swap already specified in fstab
         fi
     fi
-    if [ "$swap_devs" == "1" ]; then
-        unset swap_devs
-        for n in `blkid -o device`;
-        do
+    if [ ! -z "$swap_devs" ]; then
+        for n in `blkid -o device`; do
             export `blkid -o export $n`
             if [ "$TYPE" == "swap" ]; then
-                if swapon -p 0 $DEVNAME; then
+                if swapon -f -p 1 $DEVNAME; then
                     swap_dev=(${swap_dev[@]} $DEVNAME)
-                else
-                   :
+                    swapoff $DEVNAME &
                 fi
             fi
         done
-        if [ "$devs_off_swapf" == "1" ]; then
+        if [ ! -z "$swap_devs_off_swapf" ]; then
             [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
         fi
     fi
     if [ ! -z $zram_size ] && [ ! -z $cpu_count ]; then
         zram_size=$(($zram_size/$cpu_count))
     fi
-    [ -z $cpu_count       ] || echo cpu_count=$cpu_count   >  $cached
-    [ -z $swappiness      ] || echo swappiness=$swappiness >> $cached &
-    [ -z $zram_size       ] || echo zram_size=$zram_size   >> $cached &
-    [ -z $swapf_size      ] || echo swapf_size=$swapf_size >> $cached &
-    [ -z ${swapf_path[0]} ] || \
-          echo export "swapf_path=(${swapf_path[@]})" >> $cached &
-    [ -z ${swap_devs[0]}  ] || \
-          echo export "swap_dev=(${swap_dev[@]})"     >> $cached &
+    A=()
+    [ -z $cpu_count       ] || A=( ${A[@]} cpu_count=$cpu_count   )
+    [ -z $swappiness      ] || A=( ${A[@]} swappiness=$swappiness )
+    [ -z $zram_size       ] || A=( ${A[@]} zram_size=$zram_size   )
+    [ -z $swapf_size      ] || A=( ${A[@]} swapf_size=$swapf_size )
+    [ -z ${swapf_path[0]} ] || A=( ${A[@]} "swapf_path=(${swapf_path[@]})" )
+    [ -z ${swap_devs[0]}  ] || A=( ${A[@]} "swap_dev=(${swap_dev[@]})"     )
+
+    echo export ${A[@]} >  $cached
+
     if [ ! -f "$modfile" ]; then
         echo options zram num_devices=$cpu_count >  $modfile
         echo options loop max_loop=10 max_part=4 >> $modfile
@@ -120,26 +114,28 @@ else
 fi
 wait && . "$cached"
 ################################################################################
-started(){                     # $1=(zram || swapf || dev)
+start(){ # $1=(zram || swapf || dev)
     [ -f "/run/lock/systemd-swap.$1" ] # return 1 or 0
 }
 case $1 in
     start)
-        started dev   || mount_swapdev $swap_dev                               &
-        started zram  || create_zram  $zram_size  $cpu_count                   &
-        started swapf || create_swapf $swapf_size                              &
-        [ -z $swappiness ] || sysctl -w vm.swappiness=$swappiness
+        [ -z $swappiness ] || sysctl -w vm.swappiness=$swappiness &
+        start zram  || create_zram   &
+        start dev   || mount_swapdev &
+        start swapf || create_swapf
     ;;
-
-    stop|reset)
-        started dev   && unmount_swapdev &
-        started zram  && deatach_zram    &
-        started swapf && deatach_swapf   &
-        [ "$1" == "reset" ] && \
-            for n in ${swapf_path[@]} $cached $modfile
-            do
-                [ -f $n ] && rm -v $n &
-            done
+    stop)
+        start zram  && deatach_zram    &
+        start dev   && unmount_swapdev &
+        start swapf && deatach_swapf
+    ;;
+    reset)
+        $0 stop
+        for n in ${swapf_path[@]} $cached $modfile
+        do
+            [ -f $n ] && rm -v $n
+        done
+        $0 start
     ;;
 esac
 wait
