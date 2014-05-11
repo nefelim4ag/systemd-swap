@@ -105,7 +105,7 @@ if  [ -f $config ]; then
 
     if [ ! -f "$modfile" ]; then
         echo options zram num_devices=$cpu_count >  $modfile
-        echo options loop max_loop=10 max_part=4 >> $modfile
+        echo options loop max_loop=16 max_part=16 >> $modfile
     fi
 else
     echo "Config $config deleted, reinstall package"; exit 1
@@ -128,11 +128,11 @@ case $1 in
         start swapf && deatach_swapf
     ;;
     reset)
-        $0 stop
+        $0 stop || :
         for n in ${swapf_path[@]} $cached $modfile
         do
             [ -f $n ] && rm -v $n
         done
-        $0 start
+        $0 start || :
     ;;
 esac
