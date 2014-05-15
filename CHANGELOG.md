@@ -1,3 +1,8 @@
+## 2.16
+Now in modprobe adding only needed lines
+Added zswap handler
+
+
 ## 2.15
 Bug fix: reset function, after upgrading from very old version.
 Bug fix: systemd-swap.sevice file - restore content.

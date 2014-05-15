@@ -1,7 +1,7 @@
 #!/bin/bash -e
 create_zram(){
     i=$zram_size
-    [ -z "$i" ] && echo zram disabled && return 0
+    [ -z "$i" ] && return 0
     [ -f /dev/zram0 ] || modprobe zram num_devices=$cpu_count
     A=() B=() tmp=$[$cpu_count-1]
     for n in `seq 0 $tmp`; do
@@ -15,8 +15,8 @@ create_zram(){
 }
 
 create_swapf(){
-    [ -z ${swapf_path[0]} ] && echo swap file disabled && return 0
-    [ -z $swapf_size ]      && echo swap file disabled && return 0
+    [ -z ${swapf_path[0]} ] && return 0
+    [ -z $swapf_size ]      && return 0
     A=()
     for n in ${swapf_path[@]}; do
         if [ ! -f "$n" ]; then
@@ -92,8 +92,10 @@ if  [ -f $config ]; then
         fi
     fi
     if [ ! -z $zram_size ] && [ ! -z $cpu_count ]; then
-        zram_size=$(($zram_size/$cpu_count))
+        zram_size=$[$zram_size/$cpu_count]
     fi
+    zswap=(`dmesg | grep "loading zswap"`)
+    [ -z "$zswap" ] || unset zram_size
 
     [ -z $cpu_count       ] || A=( ${A[@]} cpu_count=$cpu_count   )
     [ -z $swappiness      ] || A=( ${A[@]} swappiness=$swappiness )
@@ -104,7 +106,9 @@ if  [ -f $config ]; then
     echo export ${A[@]} >  $cached
 
     if [ ! -f "$modfile" ]; then
-        echo options zram num_devices=$cpu_count >  $modfile
+        [ -z $zram_size ] || \
+        echo options zram num_devices=$cpu_count >   $modfile
+        [ -z ${swapf_path[0]} ] || \
         echo options loop max_loop=16 max_part=16 >> $modfile
     fi
 else
