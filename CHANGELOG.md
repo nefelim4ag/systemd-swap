@@ -1,3 +1,8 @@
+## 2.17
+Swappiness tuner deleted
+Small code cleanups
+Deleted modprobe for loopdevs
+
 ## 2.16
 Now in modprobe adding only needed lines
 Added zswap handler

@@ -1,13 +1,12 @@
-#!/bin/bash -e
+#!/bin/bash -x
 create_zram(){
-    i=$zram_size
-    [ -z "$i" ] && return 0
+    [ -z "$zram_size" ] && return 0
     [ -f /dev/zram0 ] || modprobe zram num_devices=$cpu_count
     A=() B=() tmp=$[$cpu_count-1]
     for n in `seq 0 $tmp`; do
-        echo ${i}K > /sys/block/zram$n/disksize
-        mkswap /dev/zram$n
-        B=( ${B[@]} $n )
+        echo ${zram_size}K > /sys/block/zram$n/disksize && \
+        mkswap /dev/zram$n && \
+        B=( ${B[@]} $n )   && \
         A=( ${A[@]} /dev/zram$n )
     done
     echo ${B[@]} > /run/lock/systemd-swap.zram &
@@ -28,8 +27,7 @@ create_swapf(){
         A=(${A[@]} $lp)
         losetup $lp $n &
     done
-    wait
-    swapon ${A[@]} &
+    wait && swapon ${A[@]} &
     echo ${A[@]} > /run/lock/systemd-swap.swapf
 }
 
@@ -44,7 +42,7 @@ deatach_zram(){
         swapoff /dev/zram$n
         echo 1 > /sys/block/zram$n/reset &
     done
-    rm "/run/lock/systemd-swap.zram"
+    rm /run/lock/systemd-swap.zram
 }
 
 deatach_swapf(){
@@ -71,6 +69,7 @@ if  [ -f $config ]; then
     cpu_count=`grep -c ^processor /proc/cpuinfo`
     ram_size=`grep MemTotal: /proc/meminfo | awk '{print $2}'`
     . "$config"
+
     tmp="`grep swap /etc/fstab || :`"
     if [ ! -z "$parse_fstab" ] && [ ! -z "$tmp" ]; then
         tmp="`echo $tmp | grep '#' || :`"
@@ -79,6 +78,7 @@ if  [ -f $config ]; then
             echo Swap already specified in fstab
         fi
     fi
+
     if [ ! -z "$swap_devs" ]; then
         for n in `blkid -o device`; do
             export `blkid -o export $n`
@@ -91,14 +91,12 @@ if  [ -f $config ]; then
             [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
         fi
     fi
+    zswap=(`dmesg | grep "loading zswap"`)
+    [ -z "$zswap" ] || unset zram_size cpu_count
     if [ ! -z $zram_size ] && [ ! -z $cpu_count ]; then
         zram_size=$[$zram_size/$cpu_count]
     fi
-    zswap=(`dmesg | grep "loading zswap"`)
-    [ -z "$zswap" ] || unset zram_size
-
     [ -z $cpu_count       ] || A=( ${A[@]} cpu_count=$cpu_count   )
-    [ -z $swappiness      ] || A=( ${A[@]} swappiness=$swappiness )
     [ -z $zram_size       ] || A=( ${A[@]} zram_size=$zram_size   )
     [ -z $swapf_size      ] || A=( ${A[@]} swapf_size=$swapf_size )
     [ -z ${swapf_path[0]} ] || A=( ${A[@]} "swapf_path=(${swapf_path[@]})" )
@@ -108,8 +106,6 @@ if  [ -f $config ]; then
     if [ ! -f "$modfile" ]; then
         [ -z $zram_size ] || \
         echo options zram num_devices=$cpu_count >   $modfile
-        [ -z ${swapf_path[0]} ] || \
-        echo options loop max_loop=16 max_part=16 >> $modfile
     fi
 else
     echo "Config $config deleted, reinstall package"; exit 1
@@ -121,7 +117,6 @@ start(){ # $1=(zram || swapf || dev)
 }
 case $1 in
     start)
-        [ -z $swappiness ] || sysctl -w vm.swappiness=$swappiness &
         start zram  || create_zram   &
         start dev   || mount_swapdev &
         start swapf || create_swapf
@@ -133,8 +128,7 @@ case $1 in
     ;;
     reset)
         $0 stop || :
-        for n in ${swapf_path[@]} $cached $modfile
-        do
+        wait && for n in ${swapf_path[@]} $cached $modfile; do
             [ -f $n ] && rm -v $n
         done
         $0 start || :
