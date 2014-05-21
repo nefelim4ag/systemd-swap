@@ -1,3 +1,7 @@
+## 2.18
+Fix issues with command run order
+Deleted wrong line about systemctl reset.
+
 ## 2.17
 Swappiness tuner deleted
 Small code cleanups

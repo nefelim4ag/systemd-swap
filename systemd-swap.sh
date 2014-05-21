@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash -e
 create_zram(){
     [ -z "$zram_size" ] && return 0
     [ -f /dev/zram0 ] || modprobe zram num_devices=$cpu_count
@@ -27,7 +27,7 @@ create_swapf(){
         A=(${A[@]} $lp)
         losetup $lp $n &
     done
-    wait && swapon ${A[@]} &
+    wait && swapon ${A[@]}
     echo ${A[@]} > /run/lock/systemd-swap.swapf
 }
 
@@ -68,7 +68,9 @@ if  [ -f $config ]; then
     # CPU count = Zram devices count for parallelize the compression flows
     cpu_count=`grep -c ^processor /proc/cpuinfo`
     ram_size=`grep MemTotal: /proc/meminfo | awk '{print $2}'`
+
     . "$config"
+    [ -z $zram_num_devices ] || cpu_count=$zram_num_devices
 
     tmp="`grep swap /etc/fstab || :`"
     if [ ! -z "$parse_fstab" ] && [ ! -z "$tmp" ]; then
@@ -128,9 +130,10 @@ case $1 in
     ;;
     reset)
         $0 stop || :
-        wait && for n in ${swapf_path[@]} $cached $modfile; do
+        for n in ${swapf_path[@]} $cached $modfile; do
             [ -f $n ] && rm -v $n
         done
         $0 start || :
     ;;
 esac
+wait
