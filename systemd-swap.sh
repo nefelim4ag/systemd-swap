@@ -72,7 +72,7 @@ if  [ -f $config ]; then
     . "$config"
     [ -z $zram_num_devices ] || cpu_count=$zram_num_devices
 
-    tmp="`grep swap /etc/fstab || :`"
+    tmp="`grep '^[^#]*swap' /etc/fstab || :`"
     if [ ! -z "$parse_fstab" ] && [ ! -z "$tmp" ]; then
         tmp="`echo $tmp | grep '#' || :`"
         if [ ! -z "$tmp" ]; then
@@ -93,7 +93,7 @@ if  [ -f $config ]; then
             [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
         fi
     fi
-    zswap=(`dmesg | grep "loading zswap"`)
+    zswap=(`dmesg | grep "loading zswap" || true`)
     [ -z "$zswap" ] || unset zram_size cpu_count
     if [ ! -z $zram_size ] && [ ! -z $cpu_count ]; then
         zram_size=$[$zram_size/$cpu_count]
