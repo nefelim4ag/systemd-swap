@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -x
 create_zram(){
     [ -z "$zram_size" ] && return 0
     [ -f /dev/zram0 ] || modprobe zram num_devices=$cpu_count
@@ -74,11 +74,8 @@ if  [ -f $config ]; then
 
     tmp="`grep '^[^#]*swap' /etc/fstab || :`"
     if [ ! -z "$parse_fstab" ] && [ ! -z "$tmp" ]; then
-        tmp="`echo $tmp | grep '#' || :`"
-        if [ ! -z "$tmp" ]; then
-            unset swapf_size swapf_path swap_devs tmp
-            echo Swap already specified in fstab
-        fi
+        unset swapf_size swapf_path swap_devs tmp
+        echo Swap already specified in fstab
     fi
 
     if [ ! -z "$swap_devs" ]; then
@@ -103,7 +100,11 @@ if  [ -f $config ]; then
     [ -z $swapf_size      ] || A=( ${A[@]} swapf_size=$swapf_size )
     [ -z ${swapf_path[0]} ] || A=( ${A[@]} "swapf_path=(${swapf_path[@]})" )
     [ -z ${swap_dev[0]}   ] || A=( ${A[@]} "swap_dev=(${swap_dev[@]})"     )
-    echo export ${A[@]} >  $cached
+    if [ -z ${A[0]}       ]; then
+        touch $cached
+    else
+        echo "export ${A[@]}" >  $cached
+    fi
 
     if [ ! -f "$modfile" ]; then
         [ -z $zram_size ] || \
