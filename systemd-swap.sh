@@ -14,8 +14,7 @@ create_zram(){
 }
 
 create_swapf(){
-    [ -z ${swapf_path[0]} ] && return 0
-    [ -z $swapf_size ]      && return 0
+    [[ -z ${swapf_path[0]} && -z $swapf_size ]] && return 0
     A=()
     for n in ${swapf_path[@]}; do
         if [ ! -f "$n" ]; then
@@ -67,13 +66,13 @@ modfile=/etc/modprobe.d/90-systemd-swap.conf
 if  [ -f $config ]; then
     # CPU count = Zram devices count for parallelize the compression flows
     cpu_count=`grep -c ^processor /proc/cpuinfo`
-    ram_size=`grep MemTotal: /proc/meminfo | awk '{print $2}'`
+    ram_size=`awk '/MemTotal:/ { print $2 }' /proc/meminfo`
 
     . "$config"
     [ -z $zram_num_devices ] || cpu_count=$zram_num_devices
 
     tmp="`grep '^[^#]*swap' /etc/fstab || :`"
-    if [ ! -z "$parse_fstab" ] && [ ! -z "$tmp" ]; then
+    if [[ ! -z "$parse_fstab" && ! -z "$tmp" ]]; then
         unset swapf_size swapf_path swap_devs tmp
         echo Swap already specified in fstab
     fi
@@ -91,8 +90,8 @@ if  [ -f $config ]; then
         fi
     fi
     zswap=(`dmesg | grep "loading zswap" || true`)
-    [ -z "$zswap" ] || unset zram_size cpu_count
-    if [ ! -z $zram_size ] && [ ! -z $cpu_count ]; then
+    [ -z "$zswap" ] || unset zram_size cpu_count zswap
+    if [[ ! -z $zram_size && ! -z $cpu_count ]]; then
         zram_size=$[$zram_size/$cpu_count]
     fi
     [ -z $cpu_count       ] || A=( ${A[@]} cpu_count=$cpu_count   )
@@ -100,15 +99,14 @@ if  [ -f $config ]; then
     [ -z $swapf_size      ] || A=( ${A[@]} swapf_size=$swapf_size )
     [ -z ${swapf_path[0]} ] || A=( ${A[@]} "swapf_path=(${swapf_path[@]})" )
     [ -z ${swap_dev[0]}   ] || A=( ${A[@]} "swap_dev=(${swap_dev[@]})"     )
-    if [ -z ${A[0]}       ]; then
+    if [ -z ${A[0]} ]; then
         touch $cached
     else
         echo "export ${A[@]}" >  $cached
     fi
 
-    if [ ! -f "$modfile" ]; then
-        [ -z $zram_size ] || \
-        echo options zram num_devices=$cpu_count >   $modfile
+    if [[ ! -f "$modfile" && ! -z $zram_size ]]; then
+        echo options zram num_devices=$cpu_count > $modfile
     fi
 else
     echo "Config $config deleted, reinstall package"; exit 1
