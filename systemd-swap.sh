@@ -89,10 +89,12 @@ if  [ -f $config ]; then
             [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
         fi
     fi
-    zswap=(`dmesg | grep "loading zswap" || true`)
+    #zswap=(`dmesg | grep "loading zswap" || true`)
     [ -z "$zswap" ] || unset zram_size cpu_count zswap
     if [[ ! -z $zram_size && ! -z $cpu_count ]]; then
         zram_size=$[$zram_size/$cpu_count]
+    else
+        unset zram_size cpu_count
     fi
     [ -z $cpu_count       ] || A=( ${A[@]} cpu_count=$cpu_count   )
     [ -z $zram_size       ] || A=( ${A[@]} zram_size=$zram_size   )
@@ -105,8 +107,11 @@ if  [ -f $config ]; then
         echo "export ${A[@]}" >  $cached
     fi
 
-    if [[ ! -f "$modfile" && ! -z $zram_size ]]; then
-        echo options zram num_devices=$cpu_count > $modfile
+    if [[ ! -f "$modfile" && ! -z $zram_size && ! -z $cpu_count ]]; then
+        sum=$cpu_count
+        [ -z $add_empty_zrams ] || sum=$[ $add_empty_zrams + $cpu_count ]
+        [ 32 -le $sum ] && sum=32
+        echo options zram num_devices=$sum > $modfile
     fi
 else
     echo "Config $config deleted, reinstall package"; exit 1

@@ -1,3 +1,7 @@
+## 2.19
+Add support, for create aditional empty zram devices.
+several small fixes.
+
 ## 2.18
 Fix issues with command run order
 Deleted wrong line about systemctl reset.
