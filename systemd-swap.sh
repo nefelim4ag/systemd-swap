@@ -89,7 +89,7 @@ if  [ -f $config ]; then
             [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
         fi
     fi
-    #zswap=(`dmesg | grep "loading zswap" || true`)
+    zswap=(`dmesg | grep "loading zswap" || true`)
     [ -z "$zswap" ] || unset zram_size cpu_count zswap
     if [[ ! -z $zram_size && ! -z $cpu_count ]]; then
         zram_size=$[$zram_size/$cpu_count]
