@@ -1,7 +1,7 @@
 # systemd-swap
-Script for auto create and mount: zram swaps, swap files (through loop) devices, swap partitions
-Num of zram devices = num of cpu's cores.
-It configurable in /etc/systemd-swap.conf
+Script for auto-creation and mounting of: zram swaps, swap files (through loop) devices, swap partitions.
+Number of zram devices = num of cpu's cores.
+It is configurable in /etc/systemd-swap.conf.
 Source:
 ```
 /etc/systemd/system/systemd-swap.service
