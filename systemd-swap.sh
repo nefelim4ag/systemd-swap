@@ -1,4 +1,5 @@
 #!/bin/bash -x
+
 create_zram(){
     [ -z "$zram_size" ] && return 0
     [ -f /dev/zram0 ] || modprobe zram num_devices=$cpu_count
@@ -56,6 +57,7 @@ unmount_swapdev(){
     swapoff ${A[@]} &
     rm /run/lock/systemd-swap.dev
 }
+
 ################################################################################
 # Script body
 # Cache config generator
@@ -117,10 +119,12 @@ else
     echo "Config $config deleted, reinstall package"; exit 1
 fi
 . "$cached"
+
 ################################################################################
 start(){ # $1=(zram || swapf || dev)
     [ -f "/run/lock/systemd-swap.$1" ] # return 1 or 0
 }
+
 case $1 in
     start)
         start zram  || create_zram   &
