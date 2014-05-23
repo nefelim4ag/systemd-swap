@@ -1,3 +1,14 @@
+## 2.20
+From now:
+
+By default always aviable 32 zram devices. This specify in:
+```
+/etc/modprobe.d/90-systemd-swap.conf
+```
+All options by default disabled, you need enable what you need manualy.
+
+Added option to Enable/Disable cache of config file.
+
 ## 2.19
 Add support, for create aditional empty zram devices.
 several small fixes.
