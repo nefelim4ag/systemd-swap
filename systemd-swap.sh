@@ -43,7 +43,7 @@ manage_swapf(){
               losetup $lp $n
           done
           swapon ${loopdevs[@]}
-          echo "loopdevs=( ${loopdevs[@]} )" > /run/lock/systemd-swap.swapf
+          echo "loopdevs=( ${loopdevs[@]} )" | tee /run/lock/systemd-swap.swapf
       ;;
       stop)
           . /run/lock/systemd-swap.swapf
@@ -59,7 +59,7 @@ manage_swapdev(){
       start)
           [ -z ${swap_dev[0]} ] && return 0
           swapon -p 1 ${swap_dev[@]} || :
-          echo "swap_dev=( ${swap_dev[@]} )" > /run/lock/systemd-swap.dev
+          echo "swap_dev=( ${swap_dev[@]} )" | tee /run/lock/systemd-swap.dev
       ;;
       stop)
           . /run/lock/systemd-swap.dev
@@ -117,7 +117,7 @@ handle_cache(){
     if [ -z ${A[0]} ]; then
         touch $cached_config
     else
-        echo "export ${A[@]}" > $cached_config
+        echo "export ${A[@]}" | tee $cached_config
     fi
 }
 
