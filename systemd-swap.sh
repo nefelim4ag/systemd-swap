@@ -8,9 +8,10 @@ manage_zram(){
           zram_size=$[$zram_size/$zram_num_devices]
           A=() B=() tmp=$[$zram_num_devices-1]
           for n in `seq 0 $tmp`; do
-              echo ${zram_size}K > /sys/block/zram$n/disksize && \
-              mkswap /dev/zram$n && \
-              B=( ${B[@]} $n ) && A=( ${A[@]} /dev/zram$n )
+              echo ${zram_size}K > /sys/block/zram$n/disksize
+              mkswap /dev/zram$n
+              B=( ${B[@]} $n )
+              A=( ${A[@]} /dev/zram$n )
           done
           echo ${B[@]} > /run/lock/systemd-swap.zram &
           swapon -p 32767 ${A[@]}
@@ -18,7 +19,7 @@ manage_zram(){
       stop)
           for n in `cat /run/lock/systemd-swap.zram`; do
               swapoff /dev/zram$n
-              echo 1 > /sys/block/zram$n/reset &
+              echo 1 > /sys/block/zram$n/reset
           done
           rm /run/lock/systemd-swap.zram
       ;;
@@ -117,17 +118,6 @@ handle_cache(){
     fi
 }
 
-if [ -f $cached_config ]; then
-    . $cached_config
-else
-    if  [ -f $config ]; then
-        parse_config
-        [ -z $cache ] || handle_cache
-    else
-        echo "Config $config deleted, reinstall package"; exit 1
-    fi
-fi
-
 ################################################################################
 start(){ # $1=(zram || swapf || dev)
     [ -f "/run/lock/systemd-swap.$1" ] # return 1 or 0
@@ -135,6 +125,16 @@ start(){ # $1=(zram || swapf || dev)
 
 case $1 in
     start)
+        if [ -f $cached_config ]; then
+            . $cached_config
+        else
+            if  [ -f $config ]; then
+                parse_config
+                [ -z $cache ] || handle_cache
+            else
+                echo "Config $config deleted, reinstall package"; exit 1
+            fi
+        fi
         start zram  || manage_zram    $1
         start dev   || manage_swapdev $1
         start swapf || manage_swapf   $1
@@ -145,10 +145,7 @@ case $1 in
         start swapf && manage_swapf   $1
     ;;
     reset)
-        #stoping
-        start zram  && manage_zram    $1
-        start dev   && manage_swapdev $1
-        start swapf && manage_swapf   $1
+        $0 stop || :
         for n in ${swapf_path[@]} $cached_config; do
             [ -f $n ] && rm -v $n
         done
