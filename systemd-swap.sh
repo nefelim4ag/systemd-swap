@@ -106,11 +106,11 @@ parse_config(){
 }
 
 handle_cache(){
-    [ -z $zram_num_devices       ] || A=( ${A[@]} zram_num_devices=$zram_num_devices )
-    [ -z $zram_size       ] || A=( ${A[@]} zram_size=$zram_size               )
-    [ -z $swapf_size      ] || A=( ${A[@]} swapf_size=$swapf_size             )
-    [ -z ${swapf_path[0]} ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )"  )
-    [ -z ${swap_dev[0]}   ] || A=( ${A[@]} "swap_dev=( ${swap_dev[@]} )"      )
+    [ -z $zram_num_devices ] || A=( ${A[@]} zram_num_devices=$zram_num_devices )
+    [ -z $zram_size        ] || A=( ${A[@]} zram_size=$zram_size               )
+    [ -z $swapf_size       ] || A=( ${A[@]} swapf_size=$swapf_size             )
+    [ -z ${swapf_path[0]}  ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )"  )
+    [ -z ${swap_dev[0]}    ] || A=( ${A[@]} "swap_dev=( ${swap_dev[@]} )"      )
     if [ -z ${A[0]} ]; then
         touch $cached_config
     else
@@ -132,21 +132,18 @@ manage_config(){
 }
 
 ################################################################################
-start(){ # $1=(zram || swapf || dev)
-    [ -f "/run/lock/systemd-swap.$1" ] # return 1 or 0
-}
-
+d=/run/lock/systemd-swap
 case $1 in
     start)
         manage_config
-        start zram  || manage_zram    $1
-        start dev   || manage_swapdev $1
-        start swapf || manage_swapf   $1
+        [ -f $d.zram  ] || manage_zram    $1
+        [ -f $d.dev   ] || manage_swapdev $1
+        [ -f $d.swapf ] || manage_swapf   $1
     ;;
     stop)
-        start zram  && manage_zram    $1
-        start dev   && manage_swapdev $1
-        start swapf && manage_swapf   $1
+        [ -f $d.zram  ] && manage_zram    $1
+        [ -f $d.dev   ] && manage_swapdev $1
+        [ -f $d.swapf ] && manage_swapf   $1
     ;;
     reset)
         $0 stop || :
