@@ -6,18 +6,19 @@ manage_zram(){
           [ -z "$zram_size" ] && return 0
           [ -f /dev/zram0   ] || modprobe zram num_devices=32
           zram_size=$[$zram_size/$zram_num_devices]
-          A=() B=() tmp=$[$zram_num_devices-1]
+          A=() numbers=() tmp=$[$zram_num_devices-1]
           for n in `seq 0 $tmp`; do
               echo ${zram_size}K > /sys/block/zram$n/disksize
               mkswap /dev/zram$n
-              B=( ${B[@]} $n )
+              numbers=( ${numbers[@]} $n )
               A=( ${A[@]} /dev/zram$n )
           done
-          echo ${B[@]} > /run/lock/systemd-swap.zram &
+          echo "numbers=( ${numbers[@]} )" > /run/lock/systemd-swap.zram &
           swapon -p 32767 ${A[@]}
       ;;
       stop)
-          for n in `cat /run/lock/systemd-swap.zram`; do
+          . /run/lock/systemd-swap.zram
+          for n in ${numbers[@]}; do
               swapoff /dev/zram$n
               echo 1 > /sys/block/zram$n/reset
           done
@@ -30,7 +31,7 @@ manage_swapf(){
   case $1 in
       start)
           [[ -z ${swapf_path[0]} || -z $swapf_size ]] && return 0
-          A=()
+          loopdevs=()
           for n in ${swapf_path[@]}; do
               if [ ! -f "$n" ]; then
                   truncate -s $swapf_size $n || return 0
@@ -38,16 +39,16 @@ manage_swapf(){
                   mkswap $n     &
               fi
               lp=`losetup -f`
-              A=(${A[@]} $lp)
-              losetup $lp $n &
+              loopdevs=(${loopdevs[@]} $lp)
+              losetup $lp $n
           done
-          wait && swapon ${A[@]}
-          echo ${A[@]} > /run/lock/systemd-swap.swapf
+          swapon ${loopdevs[@]}
+          echo "loopdevs=( ${loopdevs[@]} )" > /run/lock/systemd-swap.swapf
       ;;
       stop)
-          A=(`cat /run/lock/systemd-swap.swapf`)
-          [ -z ${A[@]} ] || swapoff ${A[@]}
-          [ -z ${A[@]} ] || losetup -d ${A[@]}
+          . /run/lock/systemd-swap.swapf
+          [ -z ${loopdevs[@]} ] || swapoff ${loopdevs[@]}
+          [ -z ${loopdevs[@]} ] || losetup -d ${loopdevs[@]}
           rm /run/lock/systemd-swap.swapf
       ;;
   esac
@@ -58,11 +59,13 @@ manage_swapdev(){
       start)
           [ -z ${swap_dev[0]} ] && return 0
           swapon -p 1 ${swap_dev[@]} || :
-          echo ${swap_dev[@]} > /run/lock/systemd-swap.dev
+          echo "swap_dev=( ${swap_dev[@]} )" > /run/lock/systemd-swap.dev
       ;;
       stop)
-          A=(`cat /run/lock/systemd-swap.dev`)
-          [ -z ${A[@]} ] || swapoff ${A[@]} || :
+          . /run/lock/systemd-swap.dev
+          if [ ! -z ${swap_dev[0]} ]; then
+              swapoff ${swap_dev[@]} || :
+          fi
           rm /run/lock/systemd-swap.dev
       ;;
   esac
@@ -114,7 +117,7 @@ handle_cache(){
     if [ -z ${A[0]} ]; then
         touch $cached_config
     else
-        echo "export ${A[@]}" >  $cached_config
+        echo "export ${A[@]}" > $cached_config
     fi
 }
 
