@@ -102,11 +102,11 @@ parse_config(){
     fi
 
     [ -z  $parse_zswap ] || zswap=(`dmesg | grep "loading zswap" || true`)
-    [ -z "$zswap" ] || unset zram_size cpu_count zswap
+    [ -z "$zswap" ] || unset zram_size zram_num_devices zswap
 }
 
 handle_cache(){
-    [ -z $cpu_count       ] || A=( ${A[@]} zram_num_devices=$zram_num_devices )
+    [ -z $zram_num_devices       ] || A=( ${A[@]} zram_num_devices=$zram_num_devices )
     [ -z $zram_size       ] || A=( ${A[@]} zram_size=$zram_size               )
     [ -z $swapf_size      ] || A=( ${A[@]} swapf_size=$swapf_size             )
     [ -z ${swapf_path[0]} ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )"  )
