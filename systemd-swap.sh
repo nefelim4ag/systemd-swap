@@ -118,6 +118,19 @@ handle_cache(){
     fi
 }
 
+manage_config(){
+    if [ -f $cached_config ]; then
+            . $cached_config
+    else
+        if  [ -f $config ]; then
+            parse_config
+            [ -z $cache ] || handle_cache
+        else
+            echo "Config $config deleted, reinstall package"; exit 1
+        fi
+    fi
+}
+
 ################################################################################
 start(){ # $1=(zram || swapf || dev)
     [ -f "/run/lock/systemd-swap.$1" ] # return 1 or 0
@@ -125,16 +138,7 @@ start(){ # $1=(zram || swapf || dev)
 
 case $1 in
     start)
-        if [ -f $cached_config ]; then
-            . $cached_config
-        else
-            if  [ -f $config ]; then
-                parse_config
-                [ -z $cache ] || handle_cache
-            else
-                echo "Config $config deleted, reinstall package"; exit 1
-            fi
-        fi
+        manage_config
         start zram  || manage_zram    $1
         start dev   || manage_swapdev $1
         start swapf || manage_swapf   $1
@@ -146,6 +150,7 @@ case $1 in
     ;;
     reset)
         $0 stop || :
+        manage_config
         for n in ${swapf_path[@]} $cached_config; do
             [ -f $n ] && rm -v $n
         done
