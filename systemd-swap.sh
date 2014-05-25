@@ -8,12 +8,12 @@ manage_zram(){
           zram_size=$[$zram_size/$zram_num_devices]
           A=() numbers=() tmp=$[$zram_num_devices-1]
           for n in `seq 0 $tmp`; do
-              echo ${zram_size}K > /sys/block/zram$n/disksize
+              echo ${zram_size}K | tee /sys/block/zram$n/disksize
               mkswap /dev/zram$n
               numbers=( ${numbers[@]} $n )
               A=( ${A[@]} /dev/zram$n )
           done
-          echo "numbers=( ${numbers[@]} )" > /run/lock/systemd-swap.zram &
+          echo "numbers=( ${numbers[@]} )" | tee /run/lock/systemd-swap.zram
           swapon -p 32767 ${A[@]}
       ;;
       stop)
@@ -35,8 +35,8 @@ manage_swapf(){
           for n in ${swapf_path[@]}; do
               if [ ! -f "$n" ]; then
                   truncate -s $swapf_size $n || return 0
-                  chmod 0600 $n &
-                  mkswap $n     &
+                  chmod 0600 $n
+                  mkswap $n
               fi
               lp=`losetup -f`
               loopdevs=(${loopdevs[@]} $lp)
@@ -82,7 +82,7 @@ parse_config(){
 
   . "$config"
   [ -z $zram_num_devices ] && zram_num_devices=$cpu_count
-  [ -z "$parse_fstab"  ] || tmp="`grep '^[^#]*swap' /etc/fstab` || :"
+  [ -z "$parse_fstab"  ] || tmp="`grep '^[^#]*swap' /etc/fstab || :`"
   if [ ! -z "$tmp" ]; then
       unset swapf_size swapf_path parse_devs tmp
       echo Swap already specified in fstab
@@ -102,7 +102,7 @@ parse_config(){
       fi
   fi
 
-  [ -z  $parse_zswap ] || zswap=(`dmesg | grep "loading zswap" || true`)
+  [ -z  $parse_zswap ] || zswap=(`dmesg | grep "loading zswap" || :`)
   [ -z "$zswap" ] || unset zram_size zram_num_devices zswap
 }
 
@@ -113,9 +113,9 @@ handle_cache(){
   [ -z ${swapf_path[0]}  ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )"  )
   [ -z ${swap_dev[0]}    ] || A=( ${A[@]} "swap_dev=( ${swap_dev[@]} )"      )
   if [ -z ${A[0]} ]; then
-      touch $cached_config
+      touch $cached_config &
   else
-      echo "export ${A[@]}" | tee $cached_config
+      echo "export ${A[@]}" | tee $cached_config &
   fi
 }
 
@@ -137,14 +137,14 @@ d=/run/lock/systemd-swap
 case $1 in
     start)
         manage_config
-        [ -f $d.zram  ] || manage_zram    $1
-        [ -f $d.dev   ] || manage_swapdev $1
-        [ -f $d.swapf ] || manage_swapf   $1
+        [ -f $d.zram  ] || manage_zram    $1 &
+        [ -f $d.dev   ] || manage_swapdev $1 &
+        [ -f $d.swapf ] || manage_swapf   $1 &
     ;;
     stop)
-        [ -f $d.zram  ] && manage_zram    $1
-        [ -f $d.dev   ] && manage_swapdev $1
-        [ -f $d.swapf ] && manage_swapf   $1
+        [ -f $d.zram  ] && manage_zram    $1 &
+        [ -f $d.dev   ] && manage_swapdev $1 &
+        [ -f $d.swapf ] && manage_swapf   $1 &
     ;;
     reset)
         $0 stop || :
