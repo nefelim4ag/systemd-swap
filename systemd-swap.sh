@@ -77,48 +77,46 @@ config=/etc/systemd-swap.conf
 cached_config=/var/tmp/systemd-swap.cache
 
 parse_config(){
-    cpu_count=`grep -c ^processor /proc/cpuinfo`
-    ram_size=`awk '/MemTotal:/ { print $2 }' /proc/meminfo`
+  cpu_count=`grep -c ^processor /proc/cpuinfo`
+  ram_size=`awk '/MemTotal:/ { print $2 }' /proc/meminfo`
 
-    . "$config"
-    [ -z $zram_num_devices ] && zram_num_devices=$cpu_count
+  . "$config"
+  [ -z $zram_num_devices ] && zram_num_devices=$cpu_count
+  [ -z "$parse_fstab"  ] || tmp="`grep '^[^#]*swap' /etc/fstab` || :"
+  if [ ! -z "$tmp" ]; then
+      unset swapf_size swapf_path parse_devs tmp
+      echo Swap already specified in fstab
+  fi
 
-    [ -z "$parse_fstab"  ] || tmp=`grep '^[^#]*swap' /etc/fstab`
-    if [ ! -z "$tmp" ]; then
-        unset swapf_size swapf_path parse_devs tmp
-        echo Swap already specified in fstab
-    fi
+  swap_dev=( ${swap_partitions[@]} )
+  if [ ! -z "$parse_devs" ]; then
+      for n in `blkid -o device`; do
+          export `blkid -o export $n`
+          if [ "$TYPE" == "swap" ] && swapon -f -p 1 $DEVNAME; then
+              swap_dev=(${swap_dev[@]} $DEVNAME)
+              swapoff $DEVNAME
+          fi
+      done
+      if [ ! -z "$parse_devs_off_swapf" ]; then
+          [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
+      fi
+  fi
 
-    swap_dev=( ${swap_partitions[@]} )
-    if [ ! -z "$parse_devs" ]; then
-        for n in `blkid -o device`; do
-            export `blkid -o export $n`
-            if [ "$TYPE" == "swap" ] && swapon -f -p 1 $DEVNAME; then
-                swap_dev=(${swap_dev[@]} $DEVNAME)
-                swapoff $DEVNAME
-            fi
-        done
-
-        if [ ! -z "$parse_devs_off_swapf" ]; then
-            [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
-        fi
-    fi
-
-    [ -z  $parse_zswap ] || zswap=(`dmesg | grep "loading zswap" || true`)
-    [ -z "$zswap" ] || unset zram_size zram_num_devices zswap
+  [ -z  $parse_zswap ] || zswap=(`dmesg | grep "loading zswap" || true`)
+  [ -z "$zswap" ] || unset zram_size zram_num_devices zswap
 }
 
 handle_cache(){
-    [ -z $zram_num_devices ] || A=( ${A[@]} zram_num_devices=$zram_num_devices )
-    [ -z $zram_size        ] || A=( ${A[@]} zram_size=$zram_size               )
-    [ -z $swapf_size       ] || A=( ${A[@]} swapf_size=$swapf_size             )
-    [ -z ${swapf_path[0]}  ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )"  )
-    [ -z ${swap_dev[0]}    ] || A=( ${A[@]} "swap_dev=( ${swap_dev[@]} )"      )
-    if [ -z ${A[0]} ]; then
-        touch $cached_config
-    else
-        echo "export ${A[@]}" | tee $cached_config
-    fi
+  [ -z $zram_num_devices ] || A=( ${A[@]} zram_num_devices=$zram_num_devices )
+  [ -z $zram_size        ] || A=( ${A[@]} zram_size=$zram_size               )
+  [ -z $swapf_size       ] || A=( ${A[@]} swapf_size=$swapf_size             )
+  [ -z ${swapf_path[0]}  ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )"  )
+  [ -z ${swap_dev[0]}    ] || A=( ${A[@]} "swap_dev=( ${swap_dev[@]} )"      )
+  if [ -z ${A[0]} ]; then
+      touch $cached_config
+  else
+      echo "export ${A[@]}" | tee $cached_config
+  fi
 }
 
 manage_config(){
