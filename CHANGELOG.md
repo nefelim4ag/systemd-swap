@@ -1,3 +1,7 @@
+## 2.21
+Added description to 90-systemd-swap.conf
+Polished script logic
+
 ## 2.20
 From now:
 
