@@ -1,5 +1,11 @@
 #!/bin/bash -e
 
+write(){
+    [ "$#" != "2" ] && return 0
+    val=$1 file=$2
+    echo $val | tee $file
+}
+
 manage_zram(){
   case $1 in
       start)
@@ -12,15 +18,13 @@ manage_zram(){
           for i in `seq 0 32`; do
               if [ `cat /sys/block/zram$i/disksize` == "0" ]; then
                   dev=zram$i
-                  cd /sys/block/$dev
-                  [ -z $zram_compress ] || \
-                      echo $zram_compress | tee ./comp_algorithm
-                  [ -z $zram_streams ] || \
-                      echo $zram_streams | tee ./max_comp_streams
-                  echo ${zram_size} | tee ./disksize
+                  sys=/sys/block/$dev
+                  write $zram_compress $sys/comp_algorithm
+                  write $zram_streams  $sys/max_comp_streams
+                  write $zram_size     $sys/disksize
                   mkswap /dev/$dev
                   swapon -p 32767 /dev/$dev
-                  echo "dev=$dev" | tee /run/lock/systemd-swap.zram
+                  write "dev=$dev" /run/lock/systemd-swap.zram
                   break
               else
                   continue
@@ -30,7 +34,7 @@ manage_zram(){
       stop)
           . /run/lock/systemd-swap.zram
           swapoff /dev/$dev
-          echo 1 > /sys/block/$dev/reset
+          write 1 /sys/block/$dev/reset
           rm /run/lock/systemd-swap.zram
       ;;
   esac
@@ -52,7 +56,7 @@ manage_swapf(){
               losetup $lp $n
           done
           swapon ${loopdevs[@]}
-          echo "loopdevs=( ${loopdevs[@]} )" | tee /run/lock/systemd-swap.swapf
+          write "loopdevs=( ${loopdevs[@]} )" /run/lock/systemd-swap.swapf
       ;;
       stop)
           . /run/lock/systemd-swap.swapf
@@ -68,7 +72,7 @@ manage_swapdev(){
       start)
           [ -z ${swap_dev[0]} ] && return 0
           swapon -p 1 ${swap_dev[@]} || :
-          echo "swap_dev=( ${swap_dev[@]} )" | tee /run/lock/systemd-swap.dev
+          write "swap_dev=( ${swap_dev[@]} )" /run/lock/systemd-swap.dev
       ;;
       stop)
           . /run/lock/systemd-swap.dev
@@ -125,7 +129,7 @@ handle_cache(){
   if [ -z ${A[0]} ]; then
       touch $cached_config &
   else
-      echo "export ${A[@]}" | tee $cached_config &
+      write "export ${A[@]}" $cached_config &
   fi
 }
 
