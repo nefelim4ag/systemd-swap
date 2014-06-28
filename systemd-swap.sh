@@ -5,28 +5,32 @@ manage_zram(){
       start)
           [ -z "$zram_size" ] && return 0
           [ -f /dev/zram0   ] || modprobe zram num_devices=32
-          zram_size=$[$zram_size/$zram_num_devices]
-          A=() numbers=() tmp=$[$zram_num_devices-1]
           if [ ! -z $zram_compress ]; then
               [ -f /sys/block/zram0/comp_algorithm ] || unset zram_compress
           fi
-          for n in `seq 0 $tmp`; do
-              [ ! -z $zram_compress ] && \
-                  echo $zram_compress | tee /sys/block/zram$n/comp_algorithm
-              echo ${zram_size}K | tee /sys/block/zram$n/disksize
-              mkswap /dev/zram$n
-              numbers=( ${numbers[@]} $n )
-              A=( ${A[@]} /dev/zram$n )
+          # Find and use first free device
+          for i in `seq 0 32`; do
+              if [ `cat /sys/block/zram$i/disksize` == "0" ]; then
+                  dev=zram$i
+                  cd /sys/block/$dev
+                  [ -z $zram_compress ] || \
+                      echo $zram_compress | tee ./comp_algorithm
+                  [ -z $zram_streams ] || \
+                      echo $zram_streams | tee ./max_comp_streams
+                  echo ${zram_size} | tee ./disksize
+                  mkswap /dev/$dev
+                  swapon -p 32767 /dev/$dev
+                  echo "dev=$dev" | tee /run/lock/systemd-swap.zram
+                  break
+              else
+                  continue
+              fi
           done
-          echo "numbers=( ${numbers[@]} )" | tee /run/lock/systemd-swap.zram
-          swapon -p 32767 ${A[@]}
       ;;
       stop)
           . /run/lock/systemd-swap.zram
-          for n in ${numbers[@]}; do
-              swapoff /dev/zram$n
-              echo 1 > /sys/block/zram$n/reset
-          done
+          swapoff /dev/$dev
+          echo 1 > /sys/block/$dev/reset
           rm /run/lock/systemd-swap.zram
       ;;
   esac
@@ -86,7 +90,7 @@ parse_config(){
   ram_size=`awk '/MemTotal:/ { print $2 }' /proc/meminfo`
 
   . "$config"
-  [ -z $zram_num_devices ] && zram_num_devices=$cpu_count
+
   [ -z "$parse_fstab"  ] || tmp="`grep '^[^#]*swap' /etc/fstab || :`"
   if [ ! -z "$tmp" ]; then
       unset swapf_size swapf_path parse_devs tmp
@@ -112,12 +116,12 @@ parse_config(){
 }
 
 handle_cache(){
-  [ -z $zram_num_devices ] || A=( ${A[@]} zram_num_devices=$zram_num_devices )
-  [ -z $zram_size        ] || A=( ${A[@]} zram_size=$zram_size               )
-  [ -z $swapf_size       ] || A=( ${A[@]} swapf_size=$swapf_size             )
-  [ -z $zram_compress    ] || A=( ${A[@]} zram_compress=$zram_compress       )
-  [ -z ${swapf_path[0]}  ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )"  )
-  [ -z ${swap_dev[0]}    ] || A=( ${A[@]} "swap_dev=( ${swap_dev[@]} )"      )
+  [ -z $zram_streams    ] || A=( ${A[@]} zram_streams=$zram_streams        )
+  [ -z $zram_size       ] || A=( ${A[@]} zram_size=$zram_size              )
+  [ -z $swapf_size      ] || A=( ${A[@]} swapf_size=$swapf_size            )
+  [ -z $zram_compress   ] || A=( ${A[@]} zram_compress=$zram_compress      )
+  [ -z ${swapf_path[0]} ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )" )
+  [ -z ${swap_dev[0]}   ] || A=( ${A[@]} "swap_dev=( ${swap_dev[@]} )"     )
   if [ -z ${A[0]} ]; then
       touch $cached_config &
   else
