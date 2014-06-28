@@ -7,7 +7,12 @@ manage_zram(){
           [ -f /dev/zram0   ] || modprobe zram num_devices=32
           zram_size=$[$zram_size/$zram_num_devices]
           A=() numbers=() tmp=$[$zram_num_devices-1]
+          if [ ! -z $zram_compress ]; then
+              [ -f /sys/block/zram0/comp_algorithm ] || unset zram_compress
+          fi
           for n in `seq 0 $tmp`; do
+              [ ! -z $zram_compress ] && \
+                  echo $zram_compress | tee /sys/block/zram$n/comp_algorithm
               echo ${zram_size}K | tee /sys/block/zram$n/disksize
               mkswap /dev/zram$n
               numbers=( ${numbers[@]} $n )
@@ -110,6 +115,7 @@ handle_cache(){
   [ -z $zram_num_devices ] || A=( ${A[@]} zram_num_devices=$zram_num_devices )
   [ -z $zram_size        ] || A=( ${A[@]} zram_size=$zram_size               )
   [ -z $swapf_size       ] || A=( ${A[@]} swapf_size=$swapf_size             )
+  [ -z $zram_compress    ] || A=( ${A[@]} zram_compress=$zram_compress       )
   [ -z ${swapf_path[0]}  ] || A=( ${A[@]} "swapf_path=( ${swapf_path[@]} )"  )
   [ -z ${swap_dev[0]}    ] || A=( ${A[@]} "swap_dev=( ${swap_dev[@]} )"      )
   if [ -z ${A[0]} ]; then
