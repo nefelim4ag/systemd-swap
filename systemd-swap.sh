@@ -114,9 +114,6 @@ parse_config(){
           [ -z ${swap_dev[0]} ] || unset swapf_size swapf_path
       fi
   fi
-
-  [ -z  $parse_zswap ] || zswap=(`dmesg | grep "loading zswap" || :`)
-  [ -z "$zswap" ] || unset zram_size zram_num_devices zswap
 }
 
 handle_cache(){
