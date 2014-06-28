@@ -1,3 +1,6 @@
+## 2.22
+Added support for zram's lz4 alg
+
 ## 2.21
 Added description to 90-systemd-swap.conf
 Polished script logic
