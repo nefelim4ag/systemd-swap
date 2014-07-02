@@ -107,9 +107,9 @@ parse_config(){
   fi
 
   if [ ! -z ${swapd[parse]} ]; then
-     swapd[devs]=" `blkid -t TYPE=swap -o device | grep -vE '(zram|loop)'`
+     swapd[devs]=" `blkid -t TYPE=swap -o device | grep -vE '(zram|loop)' || :`
                    ${swapd[devs]}"
-     [ ! -z ${swapf[Poff]} ] && [ ! -z "${swapd[devs]}" ] && unset swapf || true
+     [ ! -z ${swapf[Poff]} ] && [ ! -z "${swapd[devs]}" ] && unset swapf || :
   fi
 }
 
