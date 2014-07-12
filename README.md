@@ -15,9 +15,9 @@ Using:
 * ![logo](http://www.monitorix.org/imgs/archlinux.png "arch logo")Arch: in the [community](https://www.archlinux.org/packages/community/any/systemd-swap/).
 
 Note:
+=======
+Also need external dependencies https://github.com/Nefelim4ag/zramctl
 
 In package install /etc/modprobe.d/90-systemd-swap.conf - this file create zram devices, 32 - this is maximum for this module.
 
-You can use empty devices.
-
-32 - because zram can't create new devices if others already in using, like loop module.
+You can use empty devices. 32 - because zram can't create new devices if others already in using, like loop module.

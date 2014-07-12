@@ -1,3 +1,7 @@
+## 2.24
+==================
+Move part of code, for setup zram device to external tool https://github.com/Nefelim4ag/zramctl
+
 ## 2.23
 ==================
   * Code and functionally cleanups.

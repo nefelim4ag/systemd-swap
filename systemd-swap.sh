@@ -3,8 +3,8 @@
 write(){
     [ "$#" == "2" ] || return 0
     val="$1" file="$2"
-    echo  $val >> $file || :
-    echo "$val >> $file"
+    echo -n $val | tee -a  $file
+    echo " >> $file"
 }
 
 manage_zram(){
@@ -12,33 +12,15 @@ manage_zram(){
       start)
           [ -z ${zram[size]} ] && return 0
           [ -f /dev/zram0   ] || modprobe zram num_devices=32
-          if [ ! -z ${zram[alg]} ]; then
-              grep '^[^#]*lz4' /sys/block/zram0/comp_algorithm || zram[alg]=""
-          fi
-          # Find and use first free device
-          for i in `seq 0 31`; do
-              [ -d /sys/block/zram$i ] || break
-              if [ "`cat /sys/block/zram$i/disksize`" == "0" ]; then
-                  zram[dev]=zram$i
-                  zram[sys]=/sys/block/${zram[dev]}
-                  write 1                 ${zram[sys]}/reset
-                  write ${zram[alg]}      ${zram[sys]}/comp_algorithm
-                  write ${zram[streams]}  ${zram[sys]}/max_comp_streams
-                  write ${zram[size]}     ${zram[sys]}/disksize
-                  mkswap /dev/${zram[dev]}
-                  swapon -p 32767 /dev/${zram[dev]}
-                  write "zram[dev]=${zram[dev]}" ${lock[zram]}
-                  write "zram[sys]=${zram[sys]}" ${lock[zram]}
-                  break
-              else
-                  continue
-              fi
-          done
+          zram[dev]=`zramctl find ${zram[size]} ${zram[alg]} ${zram[streams]}`
+          mkswap /dev/${zram[dev]}
+          swapon -p 32767 /dev/${zram[dev]}
+          write "zram[dev]=${zram[dev]}" ${lock[zram]}
       ;;
       stop)
           . ${lock[zram]}
           swapoff /dev/${zram[dev]}
-          write 1 ${zram[sys]}/reset
+          strace zramctl reset ${zram[dev]}
           rm ${lock[zram]}
       ;;
   esac
