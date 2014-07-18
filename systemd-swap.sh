@@ -3,8 +3,8 @@
 write(){
     [ "$#" == "2" ] || return 0
     val="$1" file="$2"
-    echo -n $val | tee -a  $file
-    echo " >> $file"
+    echo $val >>  $file
+    echo "$val >> $file"
 }
 
 manage_zram(){
