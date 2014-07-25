@@ -37,6 +37,7 @@ manage_swapf(){
           swapf[loop]=`losetup -f`
           losetup ${swapf[loop]} ${swapf[path]}
           swapon  ${swapf[loop]}
+          losetup -d ${swapf[loop]} // set autoclear flag
           write "swapf[path]=${swapf[path]}" ${lock[swapf]}
           write "swapf[loop]=${swapf[loop]}" ${lock[swapf]}
       ;;
@@ -44,7 +45,6 @@ manage_swapf(){
           . ${lock[swapf]}
           if [ ! -z ${swapf[loop]} ]; then
               swapoff ${swapf[loop]}
-              losetup -d ${swapf[loop]}
           fi
           rm ${lock[swapf]} ${swapf[path]}
       ;;
