@@ -1,3 +1,11 @@
+## 2.24.5
+==================
+Added comments in code
+Rework comments in systemd-swap.conf
+Add note, what zram[streams] and zram[alg] working only on kernels >= 3.15
+Fixes in modprobe config and small fixes in code
+Use autoclear flag for loop devices, instead of manually detaching of file
+
 ## 2.24
 ==================
 Move part of code, for setup zram device to external tool https://github.com/Nefelim4ag/zramctl
