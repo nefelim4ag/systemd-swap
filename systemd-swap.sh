@@ -12,7 +12,7 @@ manage_zram(){
   case $1 in
       start)
           [ -z ${zram[size]} ] && return 0
-          # if module not loaded create many zram devices for for users needs
+          # if module not loaded create many zram devices for users needs
           [ -f /dev/zram0   ] || modprobe zram num_devices=32
           # zramctl can't handle threads option if zram[alg] empty
           [ -z ${zram[alg]} ] && [ ! -z ${zram[streams]} ] && zram[alg]=lzo
@@ -47,7 +47,7 @@ manage_swapf(){
           # use swap file through loop, for avoid error:
           # skipping - it appears to have holes
           losetup ${swapf[loop]} ${swapf[path]}
-          swapon  ${swapf[loop]}
+          swapon -d ${swapf[loop]}
           # set autoclear flag
           losetup -d ${swapf[loop]}
           write "swapf[path]=${swapf[path]}" ${lock[swapf]}
@@ -68,7 +68,7 @@ manage_swapdev(){
       start)
           [ -z "${swapd[devs]}" ] && return 0
           for i in `echo ${swapd[devs]}`; do
-              if swapon -p 1 $i; then
+              if swapon -d -p 1 $i; then
                   write $i ${lock[dev]}
               else
                   :
