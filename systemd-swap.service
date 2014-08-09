@@ -3,7 +3,6 @@ Description=Manage swap spaces on zram, files and partitions.
 After=local-fs.target
 
 [Service]
-Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/lib/systemd/scripts/systemd-swap.sh start
 ExecStop=/usr/lib/systemd/scripts/systemd-swap.sh  stop
