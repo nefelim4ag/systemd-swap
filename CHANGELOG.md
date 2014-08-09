@@ -1,3 +1,8 @@
+## 2.24.6
+==================
+Swapon as now trying to discard for swap files and swap partitions
+Systemd as now, not tracking startup time to systemd-swap
+
 ## 2.24.5
 ==================
 Added comments in code
