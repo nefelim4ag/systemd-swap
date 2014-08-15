@@ -1,3 +1,9 @@
+## 2.24.7
+==================
+Loop devices use file descriptor for file acces ->
+file can be safety deleted after setup loop device.
+Small optimization in logics of swap file.
+
 ## 2.24.6
 ==================
 Swapon as now trying to discard for swap files and swap partitions

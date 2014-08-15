@@ -13,7 +13,7 @@ manage_zram(){
       start)
           [ -z ${zram[size]} ] && return 0
           # if module not loaded create many zram devices for users needs
-          [ -f /dev/zram0   ] || modprobe zram num_devices=32
+          [ -f /dev/zram0 ] || modprobe zram num_devices=32
           # zramctl can't handle threads option if zram[alg] empty
           [ -z ${zram[alg]} ] && [ ! -z ${zram[streams]} ] && zram[alg]=lzo
           # zramctl is a external program -> return name of first free device
@@ -35,22 +35,21 @@ manage_zram(){
 manage_swapf(){
   case $1 in
       start)
-          [ ! -z ${swapf[path]} ] || return 0
-          [ ! -z ${swapf[size]} ] || return 0
+          [ -z ${swapf[path]} ] && return 0
+          [ -z ${swapf[size]} ] && return 0
           # Create sparse file for swap
           truncate -s ${swapf[size]} ${swapf[path]} || return 0
-          # avoid permissions warning: insecure permissions
-          chmod 0600 ${swapf[path]}
-          mkswap ${swapf[path]}
-          # get first free loop device
-          swapf[loop]=`losetup -f`
+          # get first free loop device and
           # use swap file through loop, for avoid error:
           # skipping - it appears to have holes
-          losetup ${swapf[loop]} ${swapf[path]}
+          swapf[loop]=`losetup -f --show ${swapf[path]}`
+          # loop use file descriptor, file still exist, but no have path
+          # When loop deatach file, file will be deleted.
+          rm ${swapf[path]}
+          mkswap ${swapf[loop]}
           swapon -d ${swapf[loop]}
           # set autoclear flag
           losetup -d ${swapf[loop]}
-          write "swapf[path]=${swapf[path]}" ${lock[swapf]}
           write "swapf[loop]=${swapf[loop]}" ${lock[swapf]}
       ;;
       stop)
@@ -58,7 +57,7 @@ manage_swapf(){
           if [ ! -z ${swapf[loop]} ]; then
               swapoff ${swapf[loop]}
           fi
-          rm ${lock[swapf]} ${swapf[path]}
+          rm ${lock[swapf]}
       ;;
   esac
 }

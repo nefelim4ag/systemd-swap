@@ -8,4 +8,4 @@ ExecStart=/usr/lib/systemd/scripts/systemd-swap.sh start
 ExecStop=/usr/lib/systemd/scripts/systemd-swap.sh  stop
 
 [Install]
-Alias=local-fs.target.wants/systemd-swap.service
+WantedBy=local-fs.target
