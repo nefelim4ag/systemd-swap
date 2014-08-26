@@ -90,7 +90,7 @@ declare -A sys zram lock swapf swapd
 
 parse_config(){
   # get cpu count from cpuinfo
-  sys[cpu_count]=`grep -c ^processor /proc/cpuinfo`
+  sys[cpu_count]=`nproc`
   # get total ram size for meminfo
   sys[ram_size]=`awk '/MemTotal:/ { print $2 }' /proc/meminfo`
 
