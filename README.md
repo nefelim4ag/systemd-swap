@@ -3,9 +3,9 @@ Script for auto-creation and mounting of: zram swaps, swap files (through loop) 
 It is configurable in /etc/systemd-swap.conf.
 Source:
 ```
-/etc/modprobe.d/90-systemd-swap.conf
-/etc/systemd/system/systemd-swap.service
 /etc/systemd-swap.conf
+/usr/lib/modprobe.d/90-systemd-swap.conf
+/usr/lib/systemd/system/systemd-swap.service
 /usr/lib/systemd/scripts/systemd-swap.sh
 ```
 Using:
