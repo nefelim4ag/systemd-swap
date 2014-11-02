@@ -123,9 +123,9 @@ manage_config(){
 }
 
 ###############################################################################
-lock[zram]=/run/lock/systemd-swap.zram
-lock[dev]=/run/lock/systemd-swap.dev
-lock[swapf]=/run/lock/systemd-swap.swapf
+lock[zram]=/run/.systemd-swap.zram
+lock[dev]=/run/.systemd-swap.dev
+lock[swapf]=/run/.systemd-swap.swapf
 case $1 in
     start)
         manage_config
