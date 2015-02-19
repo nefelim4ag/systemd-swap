@@ -14,19 +14,19 @@ manage_zram(){
           [ -z ${zram[size]} ] && return 0
           # if module not loaded create many zram devices for users needs
           [ -f /dev/zram0 ] || modprobe zram num_devices=32
-          # zramctl can't handle threads option if zram[alg] empty
-          [ -z ${zram[alg]} ] && [ ! -z ${zram[streams]} ] && zram[alg]=lzo
+          zram[alg]=${zram[alg]:-lzo}
+          zram[streams]=${zram[streams]:-${sys[cpu_count]}}
           # zramctl is a external program -> return name of first free device
-          zram[dev]=`zramctl find ${zram[size]} ${zram[alg]} ${zram[streams]}`
-          mkswap /dev/${zram[dev]}
-          swapon -p 32767 /dev/${zram[dev]}
+          zram[dev]=$(sudo zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]})
+          mkswap ${zram[dev]}
+          swapon -p 32767 ${zram[dev]}
           write "zram[dev]=${zram[dev]}" ${lock[zram]}
       ;;
       stop)
           # read info from zram lock file
           . ${lock[zram]}
-          swapoff /dev/${zram[dev]}
-          zramctl reset ${zram[dev]}
+          swapoff ${zram[dev]}
+          zramctl -r ${zram[dev]}
           rm ${lock[zram]}
       ;;
   esac
@@ -90,9 +90,9 @@ declare -A sys zram lock swapf swapd
 
 parse_config(){
   # get cpu count from cpuinfo
-  sys[cpu_count]=`nproc`
+  sys[cpu_count]=$(nproc)
   # get total ram size for meminfo
-  sys[ram_size]=`awk '/MemTotal:/ { print $2 }' /proc/meminfo`
+  sys[ram_size]=$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)
 
   # get values from /etc/systemd-swap.conf
   . $config
