@@ -17,7 +17,7 @@ manage_zram(){
           zram[alg]=${zram[alg]:-lzo}
           zram[streams]=${zram[streams]:-${sys[cpu_count]}}
           # zramctl is a external program -> return name of first free device
-          zram[dev]=$(sudo zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]})
+          zram[dev]=$(zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]})
           mkswap ${zram[dev]}
           swapon -p 32767 ${zram[dev]}
           write "zram[dev]=${zram[dev]}" ${lock[zram]}
