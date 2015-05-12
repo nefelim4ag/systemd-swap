@@ -16,8 +16,20 @@ manage_zram(){
           [ -f /dev/zram0 ] || modprobe zram num_devices=32
           zram[alg]=${zram[alg]:-lzo}
           zram[streams]=${zram[streams]:-${sys[cpu_count]}}
-          # zramctl is a external program -> return name of first free device
-          zram[dev]=$(zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]})
+          zram[force]=${zram[force]:-force}
+          # Wrapper, for handling zram initialization problems
+          while :; do
+              # zramctl is a external program -> return name of first free device
+              if zram[dev]=$(zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]}); then
+                  break
+              else
+                  # if force option disabled, just break loop
+                  if ! ${zram[force]}; then
+                      break
+                  fi
+                  sleep 1
+              fi
+          done
           mkswap ${zram[dev]}
           swapon -p 32767 ${zram[dev]}
           write "zram[dev]=${zram[dev]}" ${lock[zram]}
