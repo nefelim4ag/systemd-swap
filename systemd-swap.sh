@@ -16,7 +16,7 @@ manage_zram(){
           [ -f /dev/zram0 ] || modprobe zram num_devices=32
           zram[alg]=${zram[alg]:-lzo}
           zram[streams]=${zram[streams]:-${sys[cpu_count]}}
-          zram[force]=${zram[force]:-force}
+          zram[force]=${zram[force]:-true}
           # Wrapper, for handling zram initialization problems
           while :; do
               # zramctl is a external program -> return name of first free device
