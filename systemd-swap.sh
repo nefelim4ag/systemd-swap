@@ -95,10 +95,42 @@ manage_swapdev(){
   esac
 }
 
+manage_zswap(){
+    ZSWAP_PATH=/sys/module/zswap/parameters/
+    case $1 in
+        start)
+            [ -f "${lock[zswap]}" ] && return 0
+            enabled=$(cat $ZSWAP_PATH/enabled)
+            compressor=$(cat $ZSWAP_PATH/compressor)
+            max_pool_percent=$(cat $ZSWAP_PATH/max_pool_percent)
+            write "zswap[enabled]=$enabled" "${lock[zswap]}"
+            write "zswap[compressor]=$compressor" "${lock[zswap]}"
+            write "zswap[max_pool_percent]=$max_pool_percent" "${lock[zswap]}"
+            [ -z ${zswap[enabled]} ] || \
+                write ${zswap[enabled]} $ZSWAP_PATH/enabled
+            [ -z ${zswap[compressor]} ] || \
+                write ${zswap[compressor]} $ZSWAP_PATH/compressor
+            [ -z ${zswap[max_pool_percent]} ] || \
+                write ${zswap[max_pool_percent]} $ZSWAP_PATH/max_pool_percent
+        ;;
+        stop)
+            [ -f "${lock[zswap]}" ] || return 0
+            . "${lock[zswap]}"
+            [ -z ${zswap[enabled]} ] || \
+                write ${zswap[enabled]} $ZSWAP_PATH/enabled
+            [ -z ${zswap[compressor]} ] || \
+                write ${zswap[compressor]} $ZSWAP_PATH/compressor
+            [ -z ${zswap[max_pool_percent]} ] || \
+                write ${zswap[max_pool_percent]} $ZSWAP_PATH/max_pool_percent
+            rm ${lock[zswap]}
+        ;;
+    esac
+}
+
 ###############################################################################
 # Script body
 # Create associative arrays
-declare -A sys zram lock swapf swapd
+declare -A sys zram lock swapf swapd zswap
 
 parse_config(){
   # get cpu count from cpuinfo
@@ -138,6 +170,7 @@ manage_config(){
 lock[zram]=/run/.systemd-swap.zram
 lock[dev]=/run/.systemd-swap.dev
 lock[swapf]=/run/.systemd-swap.swapf
+lock[zswap]=/run/.systemd-swap.zswap
 case $1 in
     start)
         manage_config
@@ -145,11 +178,13 @@ case $1 in
         [ -f ${lock[zram]}  ] || manage_zram    $1 &
         [ -f ${lock[dev]}   ] || manage_swapdev $1 &
         [ -f ${lock[swapf]} ] || manage_swapf   $1 &
+        [ -f ${lock[zswap]} ] || manage_zswap   $1 &
     ;;
     stop)
         [ -f ${lock[zram]}  ] && manage_zram    $1 &
         [ -f ${lock[dev]}   ] && manage_swapdev $1 &
         [ -f ${lock[swapf]} ] && manage_swapf   $1 &
+        [ -f ${lock[zswap]} ] && manage_zswap   $1 &
     ;;
 esac
 wait

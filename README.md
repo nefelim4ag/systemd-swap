@@ -16,7 +16,7 @@ Using:
 
 Note:
 =======
-Dependence: util-linux >= 2.26 
+Dependence: util-linux >= 2.26
 
 In package install /usr/lib/modprobe.d/90-systemd-swap.conf - this file create zram devices, 32 - this is maximum for this module.
 
