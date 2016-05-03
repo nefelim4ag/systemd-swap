@@ -127,10 +127,85 @@ manage_zswap(){
     esac
 }
 
+read_line(){
+    FILE=$1 NUM=$2
+    head -n $NUM $FILE | tail -n 1
+}
+
+gen_vram_bounds(){
+    FILE_TMP="$(mktemp)"
+    lspci | grep VGA > $FILE_TMP
+    VGA_COUNT="$(cat -n $FILE_TMP | wc -l)"
+    for a in $(seq 1 $VGA_COUNT); do
+        PCI_SLOT=$(read_line $FILE_TMP $a| awk '{print $1}')
+        FILE_REGIONS_TMP="$(mktemp)"
+        lspci -v -s $PCI_SLOT | grep '(64-bit, prefetchable)' > $FILE_REGIONS_TMP
+        REGION_COUNT="$(cat -n $FILE_REGIONS_TMP | tail -n 1 | awk '{print $1}')"
+        for b in $(seq 1 $REGION_COUNT); do
+            LINE=$(read_line $FILE_REGIONS_TMP $b)
+            REGION_START=$( echo $LINE | awk '{print $3}' )
+            REGION_START_BYTE="$((16#$REGION_START))"
+            REGION_LENGHT=$( echo $LINE | awk '{print $6}' | cut -d'=' -f2 | tr -d ']' )
+            if echo $REGION_LENGHT | grep -q M; then
+                REGION_LENGHT_MB="$(echo $REGION_LENGHT | tr -d 'M')"
+                REGION_LENGHT_BYTE=$[$REGION_LENGHT_MB*1024*1024]
+                REGION_END=$[$REGION_START_BYTE+$REGION_LENGHT_BYTE]
+                vramswap_regions[${a}_${b}]="$REGION_START_BYTE $REGION_END"
+            else
+                echo "Can't compute VRAM Region size for $PCI_SLOT"
+            fi
+        done
+    done
+    rm $FILE_TMP
+}
+
+manage_vramswap(){
+    case $1 in
+        start)
+            gen_vram_bounds
+            U_REG_START="${vramswap[region_start]}"
+            U_REG_START="$((16#$U_REG_START))"
+            U_REG_END="${vramswap[region_size]}"
+            U_REG_END="$((16#$U_REG_END))"
+            U_REG_END="$[$U_REG_START+$U_REG_END]"
+            MEM_REGION_OKAY=false
+            for region in "${vramswap_regions[@]}"; do
+                break
+                START=$(echo $region | cut -d' ' -f1)
+                END=$(echo $region | cut -d' ' -f2)
+                if (( $U_REG_START >= $START )) && (( $U_REG_START < $END )); then
+                    if (( $U_REG_END <= $END )); then
+                        MEM_REGION_OKAY=true
+                    else
+                        continue
+                    fi
+                else
+                    continue
+                fi
+            done
+            if $MEM_REGION_OKAY; then
+                modprobe slram map=VRAM,0x${vramswap[region_start]},+0x${vramswap[region_size]}
+                modprobe mtdblock
+                if [ -b /dev/mtdblock0 ]; then
+                    mkswap -L VRAM /dev/mtdblock0
+                    swapon -p 32767 /dev/mtdblock0
+                fi
+                write /dev/mtdblock0 ${lock[vramswap]}
+            else
+                echo "No one parsed region is acceptable for VRAM"
+            fi
+        ;;
+        stop)
+            swapoff /dev/mtdblock0
+            rmmod slram mtdblock
+        ;;
+    esac
+}
+
 ###############################################################################
 # Script body
 # Create associative arrays
-declare -A sys zram lock swapf swapd zswap
+declare -A sys zram lock swapf swapd zswap vramswap vramswap_regions
 
 parse_config(){
   # get cpu count from cpuinfo
@@ -171,6 +246,7 @@ lock[zram]=/run/.systemd-swap.zram
 lock[dev]=/run/.systemd-swap.dev
 lock[swapf]=/run/.systemd-swap.swapf
 lock[zswap]=/run/.systemd-swap.zswap
+lock[vramswap]=/run/.systemd-swap.vramswap
 case $1 in
     start)
         manage_config
@@ -179,12 +255,14 @@ case $1 in
         [ -f ${lock[dev]}   ] || manage_swapdev $1 &
         [ -f ${lock[swapf]} ] || manage_swapf   $1 &
         [ -f ${lock[zswap]} ] || manage_zswap   $1 &
+        [ -f ${lock[vramswap]} ] || manage_vramswap $1 &
     ;;
     stop)
         [ -f ${lock[zram]}  ] && manage_zram    $1 &
         [ -f ${lock[dev]}   ] && manage_swapdev $1 &
         [ -f ${lock[swapf]} ] && manage_swapf   $1 &
         [ -f ${lock[zswap]} ] && manage_zswap   $1 &
+        [ -f ${lock[vramswap]} ] && manage_vramswap $1 &
     ;;
 esac
 wait
