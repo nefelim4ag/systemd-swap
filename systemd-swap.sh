@@ -103,15 +103,19 @@ manage_zswap(){
             enabled=$(cat $ZSWAP_PATH/enabled)
             compressor=$(cat $ZSWAP_PATH/compressor)
             max_pool_percent=$(cat $ZSWAP_PATH/max_pool_percent)
+            zpool=$(cat $ZSWAP_PATH/zpool)
             write "zswap[enabled]=$enabled" "${lock[zswap]}"
             write "zswap[compressor]=$compressor" "${lock[zswap]}"
             write "zswap[max_pool_percent]=$max_pool_percent" "${lock[zswap]}"
+            write "zswap[zpool]=$zpool" "${lock[zswap]}"
             [ -z ${zswap[enabled]} ] || \
                 write ${zswap[enabled]} $ZSWAP_PATH/enabled
             [ -z ${zswap[compressor]} ] || \
                 write ${zswap[compressor]} $ZSWAP_PATH/compressor
             [ -z ${zswap[max_pool_percent]} ] || \
                 write ${zswap[max_pool_percent]} $ZSWAP_PATH/max_pool_percent
+            [ -z ${zswap[zpool]} ] || \
+                write ${zswap[zpool]} $ZSWAP_PATH/zpool
         ;;
         stop)
             [ -f "${lock[zswap]}" ] || return 0
@@ -122,6 +126,8 @@ manage_zswap(){
                 write ${zswap[compressor]} $ZSWAP_PATH/compressor
             [ -z ${zswap[max_pool_percent]} ] || \
                 write ${zswap[max_pool_percent]} $ZSWAP_PATH/max_pool_percent
+            [ -z ${zswap[zpool]} ] || \
+                write ${zswap[zpool]} $ZSWAP_PATH/zpool
             rm ${lock[zswap]}
         ;;
     esac
