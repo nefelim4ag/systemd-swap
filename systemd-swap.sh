@@ -96,38 +96,23 @@ manage_swapdev(){
 }
 
 manage_zswap(){
-    ZSWAP_PATH=/sys/module/zswap/parameters/
+    ZSWAP_P=/sys/module/zswap/parameters/
     case $1 in
         start)
             [ -f "${lock[zswap]}" ] && return 0
-            enabled=$(cat $ZSWAP_PATH/enabled)
-            compressor=$(cat $ZSWAP_PATH/compressor)
-            max_pool_percent=$(cat $ZSWAP_PATH/max_pool_percent)
-            zpool=$(cat $ZSWAP_PATH/zpool)
-            write "zswap[enabled]=$enabled" "${lock[zswap]}"
-            write "zswap[compressor]=$compressor" "${lock[zswap]}"
-            write "zswap[max_pool_percent]=$max_pool_percent" "${lock[zswap]}"
-            write "zswap[zpool]=$zpool" "${lock[zswap]}"
-            [ -z ${zswap[enabled]} ] || \
-                write ${zswap[enabled]} $ZSWAP_PATH/enabled
-            [ -z ${zswap[compressor]} ] || \
-                write ${zswap[compressor]} $ZSWAP_PATH/compressor
-            [ -z ${zswap[max_pool_percent]} ] || \
-                write ${zswap[max_pool_percent]} $ZSWAP_PATH/max_pool_percent
-            [ -z ${zswap[zpool]} ] || \
-                write ${zswap[zpool]} $ZSWAP_PATH/zpool
+            declare -A local
+            for param in enabled compressor max_pool_percent zpool; do
+                local["$param"]="$(cat $ZSWAP_P/$param)"
+                write "zswap[$param]=${local[$param]}" "${lock[zswap]}"
+                write "${zswap[$param]}" "$ZSWAP_P/$param"
+            done
         ;;
         stop)
             [ -f "${lock[zswap]}" ] || return 0
             . "${lock[zswap]}"
-            [ -z ${zswap[enabled]} ] || \
-                write ${zswap[enabled]} $ZSWAP_PATH/enabled
-            [ -z ${zswap[compressor]} ] || \
-                write ${zswap[compressor]} $ZSWAP_PATH/compressor
-            [ -z ${zswap[max_pool_percent]} ] || \
-                write ${zswap[max_pool_percent]} $ZSWAP_PATH/max_pool_percent
-            [ -z ${zswap[zpool]} ] || \
-                write ${zswap[zpool]} $ZSWAP_PATH/zpool
+            for param in enabled compressor max_pool_percent zpool; do
+                write "${zswap[$param]}" "$ZSWAP_P/$param"
+            done
             rm ${lock[zswap]}
         ;;
     esac
