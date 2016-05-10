@@ -1,11 +1,17 @@
 #!/bin/bash -e
+################################################################################
+# echo wrappers
+INFO(){ echo -n "INFO: "; echo "$@" ;}
+WARN(){ echo -n "WARN: "; echo "$@" ;}
+ERRO(){ echo -n "ERRO: "; echo -n "$@" ; echo " Abort!"; exit 1;}
 
+################################################################################
 # helper function for see information about writing data
 write(){
     [ "$#" == "2" ] || return 0
     val="$1" file="$2"
     echo $val >>  $file
-    echo "$val >> $file"
+    INFO "$val >> $file"
 }
 
 manage_zram(){
@@ -143,7 +149,7 @@ gen_vram_bounds(){
                 REGION_END=$[$REGION_START_BYTE+$REGION_LENGHT_BYTE]
                 vramswap_regions[${a}_${b}]="$REGION_START_BYTE $REGION_END"
             else
-                echo "Can't compute VRAM Region size for $PCI_SLOT"
+                ERRO "Can't compute VRAM Region size for $PCI_SLOT!"
             fi
         done
     done
@@ -183,7 +189,7 @@ manage_vramswap(){
                 fi
                 write /dev/mtdblock0 ${lock[vramswap]}
             else
-                echo "No one parsed region is acceptable for VRAM"
+                ERRO "No one parsed region is acceptable for VRAM!"
             fi
         ;;
         stop)
@@ -211,7 +217,7 @@ parse_config(){
   [ -z ${swapf[fstab]} ] || \
   if [ ! -z "`grep '^[^#]*swap' /etc/fstab || :`" ]; then
      unset swapf
-     echo Swap already specified in fstab
+     INFO "Swap already specified in fstab, so disable swap file creation"
   fi
 
   # Try to auto found swap partitions
@@ -227,8 +233,7 @@ manage_config(){
   if [ -f $config ]; then
       parse_config
   else
-      echo "Config $config deleted, reinstall package"
-      exit 1
+      ERRO "Config $config deleted, reinstall package"
   fi
 }
 
