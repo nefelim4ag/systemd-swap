@@ -20,22 +20,32 @@ manage_zram(){
   case $1 in
       start)
           [ -z ${zram[size]} ] && return 0
-          # if module not loaded create many zram devices for users needs
-          [ -f /dev/zram0 ] || modprobe zram num_devices=32
           zram[alg]=${zram[alg]:-lzo}
           zram[streams]=${zram[streams]:-${sys[cpu_count]}}
           zram[force]=${zram[force]:-true}
           # Wrapper, for handling zram initialization problems
           while :; do
+              [ -d /sys/module/zram ] || modprobe zram
               # zramctl is a external program -> return name of first free device
-              if zram[dev]=$(zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]}); then
+              OUTPUT="$(zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]} 2>&1 || :)"
+              if echo $OUTPUT | grep -q "/dev/zram"; then
+                  zram[dev]="$OUTPUT"
                   break
               else
-                  # if force option disabled, just break loop
-                  if ! ${zram[force]}; then
+                  if echo $OUTPUT | grep -q "zramctl: no free zram device found"; then
+                      WARN "zramctl can't find free device"
+                      INFO "Use workaround hook for hot add"
+                      if [ -f /sys/class/zram-control/hot_add ]; then
+                          NEW_ZRAM=$(cat /sys/class/zram-control/hot_add)
+                          INFO "Success: new device /dev/zram$NEW_ZRAM"
+                      else
+                          ERRO "This kernel not support hot add zram device, please use 4.2< kernels"
+                      fi
+                  elif ! ${zram[force]}; then
                       break
+                  else
+                      sleep 1
                   fi
-                  sleep 1
               fi
           done
           mkswap ${zram[dev]}

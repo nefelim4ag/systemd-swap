@@ -28,4 +28,3 @@ fi
 $SUDO cp -v   ./systemd-swap.sh       /usr/lib/systemd/scripts/systemd-swap.sh
 $SUDO ln -svf  /etc/systemd-swap.conf /etc/systemd/swap.conf
 $SUDO cp -v   ./systemd-swap.service  /usr/lib/systemd/system/systemd-swap.service
-$SUDO cp -v   ./90-systemd-swap.conf  /etc/modprobe.d/90-systemd-swap.conf
