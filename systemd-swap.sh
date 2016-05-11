@@ -10,8 +10,10 @@ ERRO(){ echo -n "ERRO: "; echo -n "$@" ; echo " Abort!"; exit 1;}
 write(){
     [ "$#" == "2" ] || return 0
     val="$1" file="$2"
-    echo $val >>  $file
+    [ ! -z "$val"  ] || return 0
+    [ ! -z "$file" ] || return 0
     INFO "$val >> $file"
+    echo "$val" >>  "$file"
 }
 
 manage_zram(){
@@ -159,6 +161,12 @@ gen_vram_bounds(){
 manage_vramswap(){
     case $1 in
         start)
+            [ -f "${lock[vramswap]}" ] && return 0
+            [ -z "${vramswap[region_start]}" ] && return 0
+            [ -z "${vramswap[region_size]}"  ] && return 0
+            if [ -b /dev/mtdblock0 ]; then
+                ERRO "Can't handle VRAM SWAP if /dev/mtdblock0 exist before first systemd-swap initialization!"
+            fi
             gen_vram_bounds
             U_REG_START="${vramswap[region_start]}"
             U_REG_START="$((16#$U_REG_START))"
@@ -193,7 +201,8 @@ manage_vramswap(){
             fi
         ;;
         stop)
-            swapoff /dev/mtdblock0
+            [ -f "${lock[vramswap]}" ] || return 0
+            swapoff "$(cat ${lock[vramswap]})"
             rmmod slram mtdblock
         ;;
     esac
