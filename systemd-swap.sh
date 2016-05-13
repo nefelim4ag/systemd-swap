@@ -13,53 +13,59 @@ write(){
     [ ! -z "$val"  ] || return 0
     [ ! -z "$file" ] || return 0
     INFO "$val >> $file"
-    echo "$val" >>  "$file"
+    echo "$val" >> "$file" || \
+        WARN "Problem with writing $val >> $file"
+}
+
+zram_hot_add(){
+    WARN "zramctl can't find free device"
+    INFO "Use workaround hook for hot add"
+    if [ -f /sys/class/zram-control/hot_add ]; then
+        NEW_ZRAM=$(cat /sys/class/zram-control/hot_add)
+        INFO "Success: new device /dev/zram$NEW_ZRAM"
+    else
+        ERRO "This kernel not support hot add zram device, please use 4.2+ kernels or see modinfo zram and make modprobe rule"
+    fi
 }
 
 manage_zram(){
-  case $1 in
-      start)
-          [ -z ${zram[size]} ] && return 0
-          zram[alg]=${zram[alg]:-lzo}
-          zram[streams]=${zram[streams]:-${sys[cpu_count]}}
-          zram[force]=${zram[force]:-true}
-          # Wrapper, for handling zram initialization problems
-          while :; do
-              [ -d /sys/module/zram ] || modprobe zram
-              # zramctl is a external program -> return name of first free device
-              OUTPUT="$(zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]} 2>&1 || :)"
-              if echo $OUTPUT | grep -q "/dev/zram"; then
-                  zram[dev]="$OUTPUT"
-                  break
-              else
-                  if echo $OUTPUT | grep -q "zramctl: no free zram device found"; then
-                      WARN "zramctl can't find free device"
-                      INFO "Use workaround hook for hot add"
-                      if [ -f /sys/class/zram-control/hot_add ]; then
-                          NEW_ZRAM=$(cat /sys/class/zram-control/hot_add)
-                          INFO "Success: new device /dev/zram$NEW_ZRAM"
-                      else
-                          ERRO "This kernel not support hot add zram device, please use 4.2< kernels"
-                      fi
-                  elif ! ${zram[force]}; then
-                      break
-                  else
-                      sleep 1
-                  fi
-              fi
-          done
-          mkswap ${zram[dev]}
-          swapon -p 32767 ${zram[dev]}
-          write "zram[dev]=${zram[dev]}" ${lock[zram]}
-      ;;
-      stop)
-          # read info from zram lock file
-          . ${lock[zram]}
-          swapoff ${zram[dev]}
-          zramctl -r ${zram[dev]}
-          rm ${lock[zram]}
-      ;;
-  esac
+    case $1 in
+        start)
+            [ -z "${zram[size]}" ] && return 0
+            zram[alg]=${zram[alg]:-lzo}
+            zram[streams]=${zram[streams]:-${sys[cpu_count]}}
+            zram[force]=${zram[force]:-true}
+            # Wrapper, for handling zram initialization problems
+            for (( i = 0; i < 10; i++ )); do
+                [ -d /sys/module/zram ] || modprobe zram
+            done
+            for (( i = 0; i < 10; i++ )); do
+                # zramctl is a external program -> return name of first free device
+                OUTPUT="$(zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]} 2>&1 || :)"
+                if echo "$OUTPUT" | grep -q "failed to reset: Device or resource busy"; then
+                    sleep 1
+                    continue
+                elif echo "$OUTPUT" | grep -q "zramctl: no free zram device found"; then
+                    zram_hot_add
+                elif echo "$OUTPUT" | grep -q "/dev/zram"; then
+                    zram[dev]="$OUTPUT"
+                    break
+                else
+                    :
+                fi
+            done
+            mkswap "${zram[dev]}"
+            swapon -p 32767 "${zram[dev]}"
+            write "zram[dev]=${zram[dev]}" ${lock[zram]}
+        ;;
+        stop)
+            # read info from zram lock file
+            . "${lock[zram]}"
+            swapoff "${zram[dev]}"
+            zramctl -r "${zram[dev]}"
+            rm "${lock[zram]}"
+        ;;
+    esac
 }
 
 manage_swapf(){
@@ -126,7 +132,6 @@ manage_zswap(){
             done
         ;;
         stop)
-            [ -f "${lock[zswap]}" ] || return 0
             . "${lock[zswap]}"
             for param in enabled compressor max_pool_percent zpool; do
                 write "${zswap[$param]}" "$ZSWAP_P/$param"
@@ -211,7 +216,6 @@ manage_vramswap(){
             fi
         ;;
         stop)
-            [ -f "${lock[vramswap]}" ] || return 0
             swapoff "$(cat ${lock[vramswap]})"
             rmmod slram mtdblock
         ;;
