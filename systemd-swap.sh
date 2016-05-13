@@ -48,6 +48,7 @@ manage_zram(){
                 elif echo "$OUTPUT" | grep -q "zramctl: no free zram device found"; then
                     zram_hot_add
                 elif echo "$OUTPUT" | grep -q "/dev/zram"; then
+                    [ -b "$OUTPUT" ] || continue
                     zram[dev]="$OUTPUT"
                     break
                 else
