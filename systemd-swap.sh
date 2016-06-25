@@ -35,10 +35,15 @@ manage_zram(){
             zram[alg]=${zram[alg]:-lzo}
             zram[streams]=${zram[streams]:-${sys[cpu_count]}}
             zram[force]=${zram[force]:-true}
-            # Wrapper, for handling zram initialization problems
-            for (( i = 0; i < 10; i++ )); do
-                [ -d /sys/module/zram ] || modprobe zram
-            done
+            zram[module]=${zram[module]:-true}
+
+            if [[ "${zram[module]}" = "true" ]]; then
+                # Wrapper, for handling zram initialization problems
+                for (( i = 0; i < 10; i++ )); do
+                    [ -d /sys/module/zram ] || modprobe zram
+                done
+            fi
+
             for (( i = 0; i < 10; i++ )); do
                 # zramctl is a external program -> return name of first free device
                 OUTPUT="$(zramctl -f -a ${zram[alg]} -t ${zram[streams]} -s ${zram[size]} 2>&1 || :)"
