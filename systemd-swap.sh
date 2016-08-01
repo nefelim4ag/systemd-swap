@@ -61,7 +61,7 @@ manage_zram(){
                 fi
             done
             mkswap "${zram[dev]}"
-            swapon -p 32767 "${zram[dev]}"
+            swapon -d -p 32767 "${zram[dev]}"
             write "zram[dev]=${zram[dev]}" ${lock[zram]}
         ;;
         stop)
