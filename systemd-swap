@@ -137,6 +137,43 @@ case "$1" in
             ln -s $swapf_loop $WORK_DIR/swapf/
         fi
 
+        if YN $swapfc_enabled; then
+            get_free_swap_perc(){
+                calc(){
+                    # +1 prevent devide by zero
+                    echo $(( (${4}*100)/(${2}+1) ));
+                }
+                calc $(free -b | grep Swap:)
+            }
+            chunk_size=${swapfc_chunk_size:-"64M"}
+            max_count=${swapfc_max_count:-"64"}
+            free_swap_perc=${swapfc_free_swap_perc:-"15"}
+            path=${swapfc_path:-"/var/swapfc/"}
+            {
+                mkdir -p $path
+                mkdir -p $WORK_DIR/swapfc/
+                touch $WORK_DIR/swapfc/.lock
+                allocated=0
+                while sleep 1 && [ -f $WORK_DIR/swapfc/.lock ]; do
+                    if [[ $(get_free_swap_perc) < $free_swap_perc ]] && (( allocated < max_count )); then
+                        allocated=$((allocated+1))
+                        INFO "swapFC: free swap < $free_swap_perc - allocate chunk: $allocated"
+                        fallocate -l $chunk_size $path/$allocated
+                        chmod 0600 $path/$allocated
+                        mkswap $path/$allocated &> /dev/null
+                        swapon $path/$allocated
+                        ln -s $path/$allocated $WORK_DIR/swapfc/$allocated
+                    fi
+                    if [[ $(get_free_swap_perc) > $((free_swap_perc+40)) ]] && (( allocated > 2 )); then
+                        INFO "swapFC: free swap > $((free_swap_perc+40)) - freeup chunk: $allocated"
+                        swapoff $WORK_DIR/swapfc/$allocated && \
+                            rm $path/$allocated $WORK_DIR/swapfc/$allocated
+                        allocated=$((allocated-1))
+                    fi
+                done
+            } &
+        fi
+
         if YN $swapd_auto_swapon; then
             INFO "swapD: search swap devices"
             mkdir -p $WORK_DIR/swapd/
@@ -185,6 +222,19 @@ case "$1" in
                     rm $device && \
                         INFO "swapF: stopped /dev/$(basename $device)"
             done
+        fi
+
+        if YN $swapfc_enabled; then
+            path=${swapfc_path:-"/var/swapfc/"}
+            [ -f $WORK_DIR/swapfc/.lock ] && \
+                rm $WORK_DIR/swapfc/.lock
+            sleep 2
+            for file in $WORK_DIR/swapfc/*; do
+                [ ! -f "$file" ] && continue
+                swapoff $file && rm $file
+                rm $path/$(basename $file)
+            done
+            [ -d $path ] && rm -rf $path
         fi
 
         if YN $swapd_auto_swapon; then
