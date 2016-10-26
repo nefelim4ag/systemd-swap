@@ -118,21 +118,21 @@ case "$1" in
                     ln -s $zram_dev $WORK_DIR/zram/
         fi
 
-        if YN $swapf_enabled; then
-            swapf_size=${swapf_size:-"${ram_size}K"}
-            swapf_path=${swapf_path:-"/var/swap"}
-            swapf_prio=${swapf_prio:-"-1024"}
-            truncate -s $swapf_size $swapf_path
+        if YN $swapfu_enabled; then
+            swapfu_size=${swapfu_size:-"${ram_size}K"}
+            swapfu_path=${swapfu_path:-"/var/swap"}
+            swapfu_prio=${swapfu_prio:-"-1024"}
+            truncate -s $swapfu_size $swapfu_path
             INFO "swapF: search free loop"
-            swapf_loop=$(losetup -f --show $swapf_path)
-            INFO "swapF: use $swapf_loop"
+            swapf_loop=$(losetup -f --show $swapfu_path)
+            INFO "swapF: use $swapfu_loop"
             # loop use file descriptor, file still exist, but no have path
             # When loop deatach file, file will be deleted.
-            rm $swapf_path
-            mkswap $swapf_loop &> /dev/null
-            swapon -p $swapf_prio -d $swapf_loop
+            rm $swapfu_path
+            mkswap $swapfu_loop &> /dev/null
+            swapon -p $swapfu_prio -d $swapfu_loop
             # set autoclear flag
-            losetup -d $swapf_loop
+            losetup -d $swapfu_loop
             mkdir -p $WORK_DIR/swapf
             ln -s $swapf_loop $WORK_DIR/swapf/
         fi
