@@ -1,18 +1,17 @@
 ## systemd-swap
 Script for manage swap on:
+* zswap - Enable/Configure
 * zram - Autoconfigurating
-* zswap - configure
-* block devices - auto find and do swapon
 * files - (sparse files for saving space, support btrfs)
-* vram - EXPERIMENTAL: for creating swap on video memory
+* block devices - auto find and do swapon
 
-It is configurable in /etc/systemd-swap.conf.
+It is configurable in /etc/systemd/swap.conf.
 
 ## Files placed:
 ```
-/etc/systemd-swap.conf
+/etc/systemd/swap.conf
 /usr/lib/systemd/system/systemd-swap.service
-/usr/lib/systemd/scripts/systemd-swap.sh
+/usr/bin/systemd-swap
 ```
 
 ## Please not forget to enable by:
@@ -34,4 +33,3 @@ $ sudo dpkg -i ././systemd-swap/systemd-swap-*any.deb
 ```
 options zram max_devices=32
 ```
-* For vram as swap, you need open source drivers [Arch wiki](https://wiki.archlinux.org/index.php/Swap_on_video_ram)

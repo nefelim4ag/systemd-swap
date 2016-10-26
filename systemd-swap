@@ -1,0 +1,202 @@
+#!/bin/bash
+################################################################################
+# echo wrappers
+INFO(){ echo -n "INFO: "; echo "$@" ;}
+WARN(){ echo -n "WARN: "; echo "$@" ;}
+ERRO(){ echo -n "ERRO: "; echo -n "$@" ; echo " Abort!"; exit 1;}
+
+################################################################################
+# Helpers
+YN(){
+    case "$1" in
+        Yes|Y|1|true) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+write(){
+    DATA="$1" FILE="$2"
+    [ -z "$DATA" ] && return
+    [ -z "$FILE" ] && return
+    echo "$DATA" > "$FILE"
+}
+
+help(){
+    echo "$0 start|stop"
+}
+################################################################################
+# Initialization
+check_root_rights(){ [ "$UID" == "0" ] || ERRO "Script must be runned as root!"; }
+
+# get cpu count from cpuinfo
+cpu_count=$(nproc)
+# get total ram size for meminfo
+ram_size=$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)
+
+WORK_DIR=/run/systemd/swap
+TMPDIR=$WORK_DIR
+CONF=/etc/systemd/swap.conf
+B_CONF=$WORK_DIR/swap.conf
+
+case "$1" in
+    start)
+        INFO "Check config"
+        [ ! -f $CONF ] && ERRO "Missing config: /etc/systemd/swap.conf - try reinstall package"
+        check_root_rights
+        mkdir -p $WORK_DIR
+        [ -f $B_CONF ] && ERRO "systemd-swap already started!"
+        INFO "Backup config"
+        cp $CONF $B_CONF
+        INFO "Load config"
+        . $B_CONF
+
+        if YN $zswap_enabled; then
+            [ ! -d /sys/module/zswap ] && ERRO "Zswap - not supported on current kernel"
+            ZSWAP_P=/sys/module/zswap/parameters/
+            INFO "Zswap: backup current configuration: start"
+            mkdir -p $WORK_DIR/zswap/
+            for file in $ZSWAP_P/*; do
+                cp $file $WORK_DIR/zswap/$(basename $file)
+            done
+            INFO "Zswap: backup current configuration: complete"
+            INFO "Zswap: set new parameters: start"
+            write $zswap_enabled            $ZSWAP_P/enabled
+            write $zswap_compressor         $ZSWAP_P/compressor
+            write $zswap_max_pool_percent   $ZSWAP_P/max_pool_percent
+            write $zswap_zpool              $ZSWAP_P/zpool
+            INFO "Zswap: set new parameters: complete"
+        fi
+
+        if YN $zram_enabled; then
+            [ -z "$zram_size" ] && zram_size=$((ram_size/4))K
+            zram_streams=${zram_streams:-$cpu_count}
+            zram_alg=${zram_alg:-"lz4"}
+            zram_prio=${zram_prio:-"32767"}
+            zram_dev=""
+            INFO "Zram: check availability"
+            if [ ! -d /sys/module/zram ]; then
+                INFO "Zram: not part of kernel, so try find zram module"
+                modprobe -n zram || ERRO "Zram: can't find zram module!"
+                # Wrapper, for handling zram initialization problems
+                for (( i = 0; i < 10; i++ )); do
+                    if [ ! -d /sys/module/zram ]; then
+                        modprobe zram
+                        sleep 1
+                    fi
+                done
+                INFO "Zram: module a successful loaded"
+            fi
+            INFO "Zram: module already loaded"
+            for (( i = 0; i < 10; i++ )); do
+                INFO "Zram: try initialize free device"
+                # zramctl is a external program -> return name of first free device
+                TMP=$(mktemp)
+                zramctl -f -a $zram_alg -t $zram_streams -s $zram_size &> $TMP
+                read -r OUTPUT < $TMP
+                rm $TMP
+                case "$OUTPUT" in
+                    *"failed to reset: Device or resource busy"*) sleep 1 ;;
+                    *"zramctl: no free zram device found"*)
+                        WARN "Zram: zramctl can't find free device"
+                        INFO "Zram: use workaround hook for hot add"
+                        [ ! -f /sys/class/zram-control/hot_add ] && \
+                            ERRO "Zram: this kernel not support hot add zram device, please use 4.2+ kernels or see modinfo zram and make modprobe rule"
+                        NEW_ZRAM=$(cat /sys/class/zram-control/hot_add)
+                        INFO "Zram: success: new device /dev/zram$NEW_ZRAM"
+                    ;;
+                    /dev/zram*)
+                        [ -b "$OUTPUT" ] || continue
+                        zram_dev="$OUTPUT"
+                        break
+                    ;;
+                esac
+            done
+            INFO "Zram: initialized: $zram_dev"
+            mkdir -p $WORK_DIR/zram/
+            mkswap "$zram_dev" &> /dev/null && \
+                swapon -d -p $zram_prio "$zram_dev" && \
+                    ln -s $zram_dev $WORK_DIR/zram/
+        fi
+
+        if YN $swapf_enabled; then
+            swapf_size=${swapf_size:-"${ram_size}K"}
+            swapf_path=${swapf_path:-"/var/swap"}
+            swapf_prio=${swapf_prio:-"-1024"}
+            truncate -s $swapf_size $swapf_path
+            INFO "swapF: search free loop"
+            swapf_loop=$(losetup -f --show $swapf_path)
+            INFO "swapF: use $swapf_loop"
+            # loop use file descriptor, file still exist, but no have path
+            # When loop deatach file, file will be deleted.
+            rm $swapf_path
+            mkswap $swapf_loop &> /dev/null
+            swapon -p $swapf_prio -d $swapf_loop
+            # set autoclear flag
+            losetup -d $swapf_loop
+            mkdir -p $WORK_DIR/swapf
+            ln -s $swapf_loop $WORK_DIR/swapf/
+        fi
+
+        if YN $swapd_auto_swapon; then
+            INFO "swapD: search swap devices"
+            mkdir -p $WORK_DIR/swapd/
+            for device in $(blkid -t TYPE=swap -o device | grep -vE '(zram|loop)'); do
+                for used_device in $(swapon --show=NAME --noheadings); do
+                    [ "$device" == "$used_device" ] && unset device
+                done
+                [ ! -b "$device" ] && continue
+                swapon -d $device &> /dev/null && \
+                    ln -s $device $WORK_DIR/swapd/ && \
+                        INFO "swapD: enable device: $device"
+            done
+        fi
+    ;;
+    stop)
+        check_root_rights
+        [ ! -f $B_CONF ] && ERRO "systemd-swap not started!"
+        INFO "Load config"
+        . $B_CONF
+        if YN $zswap_enabled; then
+            [ ! -d /sys/module/zswap ] && ERRO "Zswap - not supported on current kernel"
+            ZSWAP_P=/sys/module/zswap/parameters/
+            INFO "Zswap: restore configuration: start"
+            mkdir -p $WORK_DIR/zswap/
+            for file in $WORK_DIR/zswap/*; do
+                cp $file $ZSWAP_P/$(basename $file)
+            done
+            INFO "Zswap: restore configuration: complete"
+        fi
+
+        if YN $zram_enabled; then
+            for zram in $WORK_DIR/zram/*; do
+                [ ! -b $zram ] && continue
+                INFO "Zram: remove: /dev/$(basename $zram)"
+                swapoff $zram && \
+                    zramctl -r $(basename $zram) && \
+                        rm $zram && \
+                            INFO "Zram: removed: /dev/$(basename $zram)"
+            done
+        fi
+
+        if YN $swapf_enabled; then
+            for device in $WORK_DIR/swapf/*; do
+                [ ! -b "$device" ] && continue
+                swapoff $device && \
+                    rm $device && \
+                        INFO "swapF: stopped /dev/$(basename $device)"
+            done
+        fi
+
+        if YN $swapd_auto_swapon; then
+            for device in $WORK_DIR/swapd/*; do
+                [ ! -b "$device" ] && continue
+                swapoff $device && \
+                    rm $device && \
+                        INFO "swapD: disable device: $device"
+            done
+        fi
+        [ -d $WORK_DIR ] && rm -rf $WORK_DIR
+    ;;
+
+    *) help ;;
+esac
