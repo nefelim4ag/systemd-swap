@@ -13,7 +13,7 @@ debian_package(){
     mkdir -p $DEB_NAME
     ./install.sh PREFIX=$DEB_NAME/
     mkdir -p $DEB_NAME/DEBIAN/
-    echo "Package: systemd-swap"    >> $DEB_NAME/DEBIAN/control
+    echo "Package: systemd-swap"    >  $DEB_NAME/DEBIAN/control
     echo "Version: $VERSION"        >> $DEB_NAME/DEBIAN/control
     echo "Section: custom"          >> $DEB_NAME/DEBIAN/control
     echo "Priority: optional"       >> $DEB_NAME/DEBIAN/control
