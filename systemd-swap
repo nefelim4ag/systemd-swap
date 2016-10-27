@@ -124,7 +124,7 @@ case "$1" in
             swapfu_prio=${swapfu_prio:-"-1024"}
             truncate -s $swapfu_size $swapfu_path
             INFO "swapF: search free loop"
-            swapf_loop=$(losetup -f --show $swapfu_path)
+            swapfu_loop=$(losetup -f --show $swapfu_path)
             INFO "swapF: use $swapfu_loop"
             # loop use file descriptor, file still exist, but no have path
             # When loop deatach file, file will be deleted.
@@ -134,7 +134,7 @@ case "$1" in
             # set autoclear flag
             losetup -d $swapfu_loop
             mkdir -p $WORK_DIR/swapf
-            ln -s $swapf_loop $WORK_DIR/swapf/
+            ln -s $swapfu_loop $WORK_DIR/swapf/
         fi
 
         if YN $swapfc_enabled; then
@@ -215,7 +215,7 @@ case "$1" in
             done
         fi
 
-        if YN $swapf_enabled; then
+        if YN $swapfu_enabled; then
             for device in $WORK_DIR/swapf/*; do
                 [ ! -b "$device" ] && continue
                 swapoff $device && \
