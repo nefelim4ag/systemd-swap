@@ -133,8 +133,8 @@ case "$1" in
             swapon -p $swapfu_prio -d $swapfu_loop
             # set autoclear flag
             losetup -d $swapfu_loop
-            mkdir -p $WORK_DIR/swapf
-            ln -s $swapfu_loop $WORK_DIR/swapf/
+            mkdir -p $WORK_DIR/swapfu
+            ln -s $swapfu_loop $WORK_DIR/swapfu/
         fi
 
         if YN $swapfc_enabled; then
@@ -216,7 +216,7 @@ case "$1" in
         fi
 
         if YN $swapfu_enabled; then
-            for device in $WORK_DIR/swapf/*; do
+            for device in $WORK_DIR/swapfu/*; do
                 [ ! -b "$device" ] && continue
                 swapoff $device && \
                     rm $device && \
