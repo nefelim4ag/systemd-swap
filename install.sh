@@ -7,7 +7,7 @@ ERRO(){ echo -n "ERRO: "; echo -n "$@" ; echo " Abort!"; exit 1;}
 
 PREFIX="/"
 case $1 in
-    PREFIX=*) PREFIX="${PREFIX//PREFIX=/}";;
+    PREFIX=*) PREFIX="${1//PREFIX=/}";;
 esac
 
 cd "$(dirname $0)"
