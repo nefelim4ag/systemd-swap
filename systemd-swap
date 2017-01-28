@@ -154,6 +154,13 @@ case "$1" in
             fi
             # set autoclear flag
             losetup -d $swapfu_loop
+            if YN $swapfu_directio; then
+                INFO "swapFU: enable directio for $swapfu_loop"
+                losetup --direct-io=on  $swapfu_loop
+            else
+                INFO "swapFU: disable directio for $swapfu_loop"
+                losetup --direct-io=off $swapfu_loop
+            fi
             mkdir -p $WORK_DIR/swapfu
             ln -s $swapfu_loop $WORK_DIR/swapfu/
         fi
