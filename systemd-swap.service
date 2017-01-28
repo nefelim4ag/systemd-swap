@@ -6,6 +6,7 @@ After=local-fs.target
 RemainAfterExit=yes
 ExecStart=/usr/bin/systemd-swap start
 ExecStop=/usr/bin/systemd-swap  stop
+TimeoutStopSec=600
 Nice=-19
 OOMScoreAdjust=-999
 CPUAccounting=true
