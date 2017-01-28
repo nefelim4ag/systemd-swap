@@ -24,6 +24,7 @@ write(){
 help(){
     echo "$0 start|stop"
 }
+
 ################################################################################
 # Initialization
 check_root_rights(){ [ "$UID" == "0" ] || ERRO "Script must be run as root!"; }
@@ -56,7 +57,7 @@ case "$1" in
             INFO "Zswap: backup current configuration: start"
             mkdir -p $WORK_DIR/zswap/
             for file in $ZSWAP_P/*; do
-                cp $file $WORK_DIR/zswap/$(basename $file)
+                cp "$file" "$WORK_DIR/zswap/$(basename $file)"
             done
             INFO "Zswap: backup current configuration: complete"
             INFO "Zswap: set new parameters: start"
@@ -85,8 +86,9 @@ case "$1" in
                     fi
                 done
                 INFO "Zram: module successfully loaded"
+            else
+                INFO "Zram: module already loaded"
             fi
-            INFO "Zram: module already loaded"
             for (( i = 0; i < 10; i++ )); do
                 INFO "Zram: trying to initialize free device"
                 # zramctl is a external program -> return name of first free device
@@ -122,15 +124,34 @@ case "$1" in
             swapfu_size=${swapfu_size:-"${ram_size}K"}
             swapfu_path=${swapfu_path:-"/var/swap"}
             swapfu_prio=${swapfu_prio:-"-1024"}
+            INFO "swapFU: create empty file"
+            touch $swapfu_path
+            if YN $swapfu_nocow; then
+                INFO "swapFU: mark file $swapfu_path nocow"
+                chattr +C $swapfu_path
+            fi
+            INFO "swapFU: max file size: 0 -> $swapfu_size"
             truncate -s $swapfu_size $swapfu_path
-            INFO "swapF: searching free loop"
+            if YN $swapfu_preallocated; then
+                INFO "swapFU: preallocate $swapfu_size"
+                fallocate -l $swapfu_size $swapfu_path
+            fi
+            INFO "swapFU: searching free loop"
             swapfu_loop=$(losetup -f --show $swapfu_path)
-            INFO "swapF: using $swapfu_loop"
-            # loop uses file descriptor, the file still exists, but does not have a path
+            INFO "swapFU: using $swapfu_loop"
+            # loop uses file descriptor, the file still exists,
+            # but does not have a path like O_TMPFILE
             # When loop detaches a file, the file will be deleted.
             rm $swapfu_path
+            INFO "swapFU: initialize swap device $swapfu_loop"
             mkswap $swapfu_loop &> /dev/null
-            swapon -p $swapfu_prio -d $swapfu_loop
+            if YN $swapfu_preallocated; then
+                INFO "swapFU: swapon - discard: disabled"
+                swapon -p $swapfu_prio    $swapfu_loop
+            else
+                INFO "swapFU: swapon - discard: enabled"
+                swapon -p $swapfu_prio -d $swapfu_loop
+            fi
             # set autoclear flag
             losetup -d $swapfu_loop
             mkdir -p $WORK_DIR/swapfu
@@ -154,7 +175,7 @@ case "$1" in
                 mkdir -p $WORK_DIR/swapfc/
                 touch $WORK_DIR/swapfc/.lock
                 allocated=0
-                while sleep 1 && [ -f $WORK_DIR/swapfc/.lock ]; do
+                while sleep $swapfc_frequency && [ -f $WORK_DIR/swapfc/.lock ]; do
                     if [[ $(get_free_swap_perc) < $free_swap_perc ]] && (( allocated < max_count )); then
                         allocated=$((allocated+1))
                         INFO "swapFC: free swap < $free_swap_perc - allocate chunk: $allocated"
@@ -199,7 +220,7 @@ case "$1" in
             INFO "Zswap: restore configuration: start"
             mkdir -p $WORK_DIR/zswap/
             for file in $WORK_DIR/zswap/*; do
-                cp $file $ZSWAP_P/$(basename $file)
+                cp "$file" "$ZSWAP_P/$(basename $file)"
             done
             INFO "Zswap: restore configuration: complete"
         fi
@@ -209,7 +230,7 @@ case "$1" in
                 [ ! -b $zram ] && continue
                 INFO "Zram: removing: /dev/$(basename $zram)"
                 swapoff $zram && \
-                    zramctl -r $(basename $zram) && \
+                    zramctl -r "$(basename $zram)" && \
                         rm $zram && \
                             INFO "Zram: removed: /dev/$(basename $zram)"
             done
@@ -228,11 +249,13 @@ case "$1" in
             path=${swapfc_path:-"/var/swapfc/"}
             [ -f $WORK_DIR/swapfc/.lock ] && \
                 rm $WORK_DIR/swapfc/.lock
-            sleep 2
+            # wait two times
+            sleep $swapfc_frequency
+            sleep $swapfc_frequency
             for file in $WORK_DIR/swapfc/*; do
                 [ ! -f "$file" ] && continue
                 swapoff $file && rm $file
-                rm $path/$(basename $file)
+                rm "$path/$(basename $file)"
             done
             [ -d $path ] && rm -rf $path
         fi
