@@ -232,6 +232,7 @@ case "$1" in
 
         swapd_auto_swapon=${swapd_auto_swapon:-1}
         if YN $swapd_auto_swapon; then
+            swapd_prio=${swapd_prio:-1024}
             INFO "swapD: searching swap devices"
             mkdir -p $WORK_DIR/swapd/
             for device in $(blkid -t TYPE=swap -o device | grep -vE '(zram|loop)'); do
@@ -239,9 +240,10 @@ case "$1" in
                     [ "$device" == "$used_device" ] && unset device
                 done
                 [ ! -b "$device" ] && continue
-                swapon -d $device &> /dev/null && \
+                swapon -d -p "$swapd_prio" $device &> /dev/null && \
                     ln -s $device $WORK_DIR/swapd/ && \
                         INFO "swapD: enabled device: $device"
+                swapd_prio=$((swapd_prio-1))
             done
         fi
     ;;
