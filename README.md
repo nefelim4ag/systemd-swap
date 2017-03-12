@@ -26,6 +26,11 @@ $ git clone https://github.com/Nefelim4ag/systemd-swap.git
 $ ./systemd-swap/package.sh debian
 $ sudo dpkg -i ././systemd-swap/systemd-swap-*any.deb
 ```
+* Manual
+```
+$ git clone https://github.com/Nefelim4ag/systemd-swap.git
+$ sudo make install
+```
 
 ## About configuration
 ```

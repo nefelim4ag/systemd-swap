@@ -34,9 +34,9 @@ cpu_count=$(nproc)
 # get total ram size for meminfo
 ram_size=$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)
 
-WORK_DIR=/run/systemd/swap
-TMPDIR=$WORK_DIR
+
 CONF=/etc/systemd/swap.conf
+WORK_DIR=/run/systemd/swap
 B_CONF=$WORK_DIR/swap.conf
 
 case "$1" in
@@ -49,8 +49,10 @@ case "$1" in
         INFO "Backup config"
         cp $CONF $B_CONF
         INFO "Load config"
+        # shellcheck source=/run/systemd/swap/swap.conf
         . $B_CONF
 
+        zswap_enabled=${zswap_enabled:-0}
         if YN $zswap_enabled; then
             [ ! -d /sys/module/zswap ] && ERRO "Zswap - not supported on current kernel"
             ZSWAP_P=/sys/module/zswap/parameters/
@@ -61,13 +63,14 @@ case "$1" in
             done
             INFO "Zswap: backup current configuration: complete"
             INFO "Zswap: set new parameters: start"
-            write $zswap_enabled            $ZSWAP_P/enabled
-            write $zswap_compressor         $ZSWAP_P/compressor
-            write $zswap_max_pool_percent   $ZSWAP_P/max_pool_percent
-            write $zswap_zpool              $ZSWAP_P/zpool
+            write ${zswap_enabled:-1}           $ZSWAP_P/enabled
+            write ${zswap_compressor:-lz4}      $ZSWAP_P/compressor
+            write ${zswap_max_pool_percent:-25} $ZSWAP_P/max_pool_percent
+            write ${zswap_zpool:-zbud}          $ZSWAP_P/zpool
             INFO "Zswap: set new parameters: complete"
         fi
 
+        zram_enabled=${zram_enabled:-0}
         if YN $zram_enabled; then
             [ -z "$zram_size" ] && zram_size=$((ram_size/4))K
             zram_streams=${zram_streams:-$cpu_count}
@@ -120,18 +123,22 @@ case "$1" in
                     ln -s $zram_dev $WORK_DIR/zram/
         fi
 
+        swapfu_enabled=${swapfu_enabled:-0}
         if YN $swapfu_enabled; then
             swapfu_size=${swapfu_size:-"${ram_size}K"}
-            swapfu_path=${swapfu_path:-"/var/swap"}
+            swapfu_path=${swapfu_path:-"/var/lib/systemd-swap/swapfu"}
             swapfu_prio=${swapfu_prio:-"-1024"}
             INFO "swapFU: create empty file"
+            mkdir -p $(dirname $swapfu_path)
             touch $swapfu_path
+            swapfu_nocow=${swapfu_nocow:-1}
             if YN $swapfu_nocow; then
                 INFO "swapFU: mark file $swapfu_path nocow"
                 chattr +C $swapfu_path
             fi
             INFO "swapFU: max file size: 0 -> $swapfu_size"
             truncate -s $swapfu_size $swapfu_path
+            swapfu_preallocated=${swapfu_preallocated:-0}
             if YN $swapfu_preallocated; then
                 INFO "swapFU: preallocate $swapfu_size"
                 fallocate -l $swapfu_size $swapfu_path
@@ -154,6 +161,7 @@ case "$1" in
             fi
             # set autoclear flag
             losetup -d $swapfu_loop
+            swapfu_directio=${swapfu_directio:-0}
             if YN $swapfu_directio; then
                 INFO "swapFU: enable directio for $swapfu_loop"
                 losetup --direct-io=on  $swapfu_loop
@@ -165,10 +173,12 @@ case "$1" in
             ln -s $swapfu_loop $WORK_DIR/swapfu/
         fi
 
+        swapfc_enabled=${swapfc_enabled:-0}
         if YN $swapfc_enabled; then
             get_free_swap_perc(){
                 calc(){
                     # +1 prevent devide by zero
+                    total="${2}" free="${4}"
                     echo $(( (${4}*100)/(${2}+1) ));
                 }
                 calc $(free -b | grep Swap:)
@@ -184,30 +194,43 @@ case "$1" in
             chunk_size=${swapfc_chunk_size:-"64M"}
             max_count=${swapfc_max_count:-"64"}
             free_swap_perc=${swapfc_free_swap_perc:-"15"}
-            path=${swapfc_path:-"/var/swapfc/"}
+            swapfc_path=${swapfc_path:-"/var/lib/systemd-swap/swapfc/"}
+            swapfc_frequency=${swapfc_frequency:-"1s"}
+            swapfc_max_count=${swapfc_max_count:-"16"}
+
+            if (( "$swapfc_max_count" > 32 )) || (( 1 > "$swapfc_max_count" )); then
+                WARN "swapfc_max_count must be in range 1..32, reset to 1"
+                swapfc_max_count=1
+            fi
+
+            mkdir -p "$swapfc_path"
+            mkdir -p "$WORK_DIR/swapfc/"
+            touch    "$WORK_DIR/swapfc/.lock"
+
             {
-                mkdir -p $path
-                mkdir -p $WORK_DIR/swapfc/
-                touch $WORK_DIR/swapfc/.lock
                 allocated=0
-                while sleep $swapfc_frequency && [ -f $WORK_DIR/swapfc/.lock ]; do
-                    if [[ $(get_free_swap_perc) < $free_swap_perc ]] && (( allocated < max_count )); then
+                while sleep $swapfc_frequency; do
+                    [ -f $WORK_DIR/swapfc/.lock ] || break
+                    curr_free_swap_perc=$(get_free_swap_perc)
+                    if (( $curr_free_swap_perc < $free_swap_perc )) && (( allocated < max_count )); then
                         allocated=$((allocated+1))
-                        INFO "swapFC: free swap < $free_swap_perc - allocate chunk: $allocated"
-                        mkswap_w "$chunk_size" "$path/$allocated"
-                        swapon $path/$allocated
-                        ln -s $path/$allocated $WORK_DIR/swapfc/$allocated
+                        INFO "swapFC: free swap: $curr_free_swap_perc < $free_swap_perc - allocate chunk: $allocated"
+                        mkswap_w "$chunk_size" "$swapfc_path/$allocated"
+                        swapon "$swapfc_path/$allocated" && \
+                            ln -s "$swapfc_path/$allocated" "$WORK_DIR/swapfc/$allocated"
                     fi
-                    if [[ $(get_free_swap_perc) > $((free_swap_perc+40)) ]] && (( allocated > 2 )); then
-                        INFO "swapFC: free swap > $((free_swap_perc+40)) - freeup chunk: $allocated"
-                        swapoff $WORK_DIR/swapfc/$allocated && \
-                            rm $path/$allocated $WORK_DIR/swapfc/$allocated
+                    if (( $(get_free_swap_perc) > $((free_swap_perc+40)) )) && (( allocated > 2 )); then
+                        INFO "swapFC: free swap: $curr_free_swap_perc > $((free_swap_perc+40)) - freeup chunk: $allocated"
+                        swapoff "$WORK_DIR/swapfc/$allocated" && \
+                            rm "$swapfc_path/$allocated" && \
+                            rm "$WORK_DIR/swapfc/$allocated"
                         allocated=$((allocated-1))
                     fi
                 done
             } &
         fi
 
+        swapd_auto_swapon=${swapd_auto_swapon:-1}
         if YN $swapd_auto_swapon; then
             INFO "swapD: searching swap devices"
             mkdir -p $WORK_DIR/swapd/
@@ -226,6 +249,7 @@ case "$1" in
         check_root_rights
         [ ! -f $B_CONF ] && ERRO "systemd-swap failed to start!"
         INFO "Load config"
+        # shellcheck source=/run/systemd/swap/swap.conf
         . $B_CONF
         if YN $zswap_enabled; then
             [ ! -d /sys/module/zswap ] && ERRO "Zswap - not supported on current kernel"
@@ -259,7 +283,7 @@ case "$1" in
         fi
 
         if YN $swapfc_enabled; then
-            path=${swapfc_path:-"/var/swapfc/"}
+            swapfc_path=${swapfc_path:-"/var/lib/systemd-swap/swapfc/"}
             [ -f $WORK_DIR/swapfc/.lock ] && \
                 rm $WORK_DIR/swapfc/.lock
             # wait two times
@@ -268,9 +292,9 @@ case "$1" in
             for file in $WORK_DIR/swapfc/*; do
                 [ ! -f "$file" ] && continue
                 swapoff $file && rm $file
-                rm "$path/$(basename $file)"
+                rm "$swapfc_path/$(basename $file)"
             done
-            [ -d $path ] && rm -rf $path
+            [ -d $swapfc_path ] && rm -rf $swapfc_path
         fi
 
         if YN $swapd_auto_swapon; then
@@ -281,6 +305,7 @@ case "$1" in
                         INFO "swapD: disabled device: $device"
             done
         fi
+
         [ -d $WORK_DIR ] && rm -rf $WORK_DIR
     ;;
 

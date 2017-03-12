@@ -4,6 +4,7 @@ default:  help
 
 install: ## Install systemd-swap
 install:
+	mkdir -p 								$(PREFIX)/var/lib/systemd-swap
 	install -Dm755	./systemd-swap 			$(PREFIX)/usr/bin/systemd-swap
 	install -Dm644	./systemd-swap.service  $(PREFIX)/lib/systemd/system/systemd-swap.service
 	install -bDm644 -S .old	./swap.conf		$(PREFIX)/etc/systemd/swap.conf
@@ -14,6 +15,7 @@ uninstall:
 	rm -v $(PREFIX)/usr/bin/systemd-swap
 	rm -v $(PREFIX)/lib/systemd/system/systemd-swap.service
 	rm -v $(PREFIX)/etc/systemd/swap.conf
+	rm -r $(PREFIX)/var/lib/systemd-swap
 
 deb: ## Create debian package
 deb:
