@@ -3,7 +3,7 @@
 # echo wrappers
 INFO(){ echo -n "INFO: "; echo "$@" ;}
 WARN(){ echo -n "WARN: "; echo "$@" ;}
-ERRO(){ echo -n "ERRO: "; echo -n "$@" ; echo " Abort!"; exit 1;}
+ERRO(){ echo -n "ERRO: "; echo "$@" ; exit 1;}
 
 ################################################################################
 # Helpers
