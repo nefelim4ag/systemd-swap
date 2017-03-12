@@ -187,6 +187,8 @@ case "$1" in
                         allocated=$((allocated+1))
                         INFO "swapFC: free swap < $free_swap_perc - allocate chunk: $allocated"
                         fallocate -l $chunk_size $path/$allocated
+                        # File must not contain holes for XFS/f2fs & etc
+                        shred -n1 -z $path/$allocated
                         chmod 0600 $path/$allocated
                         mkswap $path/$allocated &> /dev/null
                         swapon $path/$allocated
