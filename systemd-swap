@@ -129,7 +129,7 @@ case "$1" in
             swapfu_path=${swapfu_path:-"/var/lib/systemd-swap/swapfu"}
             swapfu_prio=${swapfu_prio:-"-1024"}
             INFO "swapFU: create empty file"
-            mkdir -p $(dirname $swapfu_path)
+            mkdir -p "$(dirname $swapfu_path)"
             touch $swapfu_path
             swapfu_nocow=${swapfu_nocow:-1}
             if YN $swapfu_nocow; then
@@ -176,12 +176,12 @@ case "$1" in
         swapfc_enabled=${swapfc_enabled:-0}
         if YN $swapfc_enabled; then
             get_free_swap_perc(){
-                calc(){
                     # +1 prevent devide by zero
-                    total="${2}" free="${4}"
-                    echo $(( (${4}*100)/(${2}+1) ));
-                }
-                calc $(free -b | grep Swap:)
+                    total="$(grep SwapTotal: /proc/meminfo | grep -o -e '[0-9]*')"
+                    free="$(grep SwapFree: /proc/meminfo | grep -o -e '[0-9]*')"
+                    total=$((total*1024))
+                    free=$((free*1024))
+                    echo $(( (${free}*100)/(${total}+1) ));
             }
             mkswap_w(){
                 chunk_size="$1" file="$2"
