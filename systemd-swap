@@ -173,6 +173,14 @@ case "$1" in
                 }
                 calc $(free -b | grep Swap:)
             }
+            mkswap_w(){
+                chunk_size="$1" file="$2"
+                fallocate -l "$chunk_size" "$file"
+                # File must not contain holes for XFS/f2fs & etc
+                shred -n1 -z "$file"
+                chmod 0600 "$file"
+                mkswap "$file" &> /dev/null
+            }
             chunk_size=${swapfc_chunk_size:-"64M"}
             max_count=${swapfc_max_count:-"64"}
             free_swap_perc=${swapfc_free_swap_perc:-"15"}
@@ -186,11 +194,7 @@ case "$1" in
                     if [[ $(get_free_swap_perc) < $free_swap_perc ]] && (( allocated < max_count )); then
                         allocated=$((allocated+1))
                         INFO "swapFC: free swap < $free_swap_perc - allocate chunk: $allocated"
-                        fallocate -l $chunk_size $path/$allocated
-                        # File must not contain holes for XFS/f2fs & etc
-                        shred -n1 -z $path/$allocated
-                        chmod 0600 $path/$allocated
-                        mkswap $path/$allocated &> /dev/null
+                        mkswap_w "$chunk_size" "$path/$allocated"
                         swapon $path/$allocated
                         ln -s $path/$allocated $WORK_DIR/swapfc/$allocated
                     fi
