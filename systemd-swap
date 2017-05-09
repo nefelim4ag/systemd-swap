@@ -25,6 +25,8 @@ help(){
     echo "$0 start|stop"
 }
 
+get_fs_type(){ stat -f "$1" | grep Type: | tr -s ' ' | cut -d' ' -f7; }
+
 ################################################################################
 # Initialization
 check_root_rights(){ [ "$UID" == "0" ] || ERRO "Script must be run as root!"; }
@@ -187,7 +189,10 @@ case "$1" in
                 chunk_size="$1" file="$2"
                 fallocate -l "$chunk_size" "$file"
                 # File must not contain holes for XFS/f2fs & etc
-                shred -n1 -z "$file"
+                case "$(get_fs_type $file)" in
+                    ext4);;
+                    *) shred -n1 -z "$file" ;;
+                esac
                 chmod 0600 "$file"
                 mkswap "$file" &> /dev/null
             }
