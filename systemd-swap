@@ -270,9 +270,9 @@ case "$1" in
             for device in $WORK_DIR/swapd/*; do
                 [ ! -b "$device" ] && continue
                 INFO "swapD: swapoff: $device start"
-                swapoff $device && \
-                  rm $device && \
-                    INFO "swapD: swapoff: $device complete"
+                swapoff $device || continue
+                rm $device      || continue
+                INFO "swapD: swapoff: $device complete"
             done
         fi
 
@@ -283,30 +283,30 @@ case "$1" in
             sleep $swapfc_frequency
             sleep $swapfc_frequency
             for file in $WORK_DIR/swapfc/*; do
-                [ ! -f "$file" ] && continue
-                swapoff $file && rm $file
-                rm "$swapfc_path/$(basename $file)"
+                [ -f "$file" ] || continue
+                swapoff $file  || continue
+                rm -f $file "$swapfc_path/$(basename $file)"
             done
             [ -d $swapfc_path ] && rmdir $swapfc_path
         fi
 
         if [ -d $WORK_DIR/swapfu/ ]; then
             for device in $WORK_DIR/swapfu/*; do
-                [ ! -b "$device" ] && continue
-                swapoff $device && \
-                    rm $device && \
-                        INFO "swapF: stopped /dev/$(basename $device)"
+                [ -b "$device" ] || continue
+                swapoff $device  || continue
+                rm $device       || continue
+                INFO "swapF: stopped /dev/$(basename $device)"
             done
         fi
 
         if [ -d $WORK_DIR/zram/ ]; then
             for zram in $WORK_DIR/zram/*; do
-                [ ! -b $zram ] && continue
+                [ -b $zram ]    || continue
                 INFO "Zram: removing: /dev/$(basename $zram)"
-                swapoff $zram && \
-                  zramctl -r "$(basename $zram)" && \
-                    rm $zram && \
-                      INFO "Zram: removed: /dev/$(basename $zram)"
+                swapoff $zram   || continue
+                zramctl -r "$(basename $zram)" || continue
+                rm $zram        || continue
+                INFO "Zram: removed: /dev/$(basename $zram)"
             done
         fi
 
