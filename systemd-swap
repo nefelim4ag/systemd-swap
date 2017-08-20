@@ -23,6 +23,9 @@ write(){
 
 help(){
     echo "$0 start|stop|status"
+    echo "   start  - init daemon"
+    echo "   stop   - stop daemon"
+    echo "   status - show some swap status info"
 }
 
 get_fs_type(){ stat -f "$1" | grep Type: | tr -s ' ' | cut -d' ' -f7; }
@@ -32,10 +35,11 @@ get_fs_type(){ stat -f "$1" | grep Type: | tr -s ' ' | cut -d' ' -f7; }
 check_root_rights(){ [ "$UID" == "0" ] || ERRO "Script must be run as root!"; }
 
 # get cpu count from cpuinfo
-cpu_count=$(nproc)
+CPU_COUNT=$(nproc)
 # get total ram size for meminfo
-ram_size=$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)
-
+RAM_SIZE=$(awk '/MemTotal:/ { print $2 }' /proc/meminfo)
+# get page size
+PAGE_SIZE=$(getconf PAGESIZE)
 
 CONF=/etc/systemd/swap.conf
 WORK_DIR=/run/systemd/swap
@@ -81,8 +85,8 @@ case "$1" in
 
         zram_enabled=${zram_enabled:-0}
         if YN $zram_enabled; then
-            [ -z "$zram_size" ] && zram_size=$((ram_size/4))K
-            zram_streams=${zram_streams:-$cpu_count}
+            [ -z "$zRAM_SIZE" ] && zRAM_SIZE=$((RAM_SIZE/4))K
+            zram_streams=${zram_streams:-$CPU_COUNT}
             zram_alg=${zram_alg:-"lz4"}
             zram_prio=${zram_prio:-"32767"}
             zram_dev=""
@@ -105,7 +109,7 @@ case "$1" in
                 INFO "Zram: trying to initialize free device"
                 # zramctl is a external program -> return name of first free device
                 TMP=$(mktemp)
-                zramctl -f -a $zram_alg -t $zram_streams -s $zram_size &> $TMP
+                zramctl -f -a $zram_alg -t $zram_streams -s $zRAM_SIZE &> $TMP
                 read -r OUTPUT < $TMP
                 rm $TMP
                 case "$OUTPUT" in
@@ -134,7 +138,7 @@ case "$1" in
 
         swapfu_enabled=${swapfu_enabled:-0}
         if YN $swapfu_enabled; then
-            swapfu_size=${swapfu_size:-"${ram_size}K"}
+            swapfu_size=${swapfu_size:-"${RAM_SIZE}K"}
             swapfu_path=${swapfu_path:-"/var/lib/systemd-swap/swapfu"}
             swapfu_prio=${swapfu_prio:-"-1024"}
             INFO "swapFU: create empty file"
@@ -198,6 +202,7 @@ case "$1" in
                 # File must not contain holes for XFS/f2fs & etc
                 case "$(get_fs_type $file)" in
                     ext4);;
+                    btrfs) ERRO "swapFC: Btrfs doesn't support swap files" ;;
                     *) shred -n1 -z "$file" ;;
                 esac
                 chmod 0600 "$file"
@@ -326,7 +331,6 @@ case "$1" in
         if [ -d /sys/module/zswap ]; then
                 echo Zswap:
                 read USED_BYTES   < /sys/kernel/debug/zswap/pool_total_size
-                PAGE_SIZE=$(getconf PAGESIZE)
                 USED_PAGES=$((USED_BYTES/$PAGE_SIZE))
                 read STORED_PAGES < /sys/kernel/debug/zswap/stored_pages
                 STORED_BYTES=$((STORED_PAGES*$PAGE_SIZE))
