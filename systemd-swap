@@ -333,9 +333,19 @@ case "$1" in
                                 sed -e 's/:/ /g' -e 's/^/. . /g' | column -t
                         echo . . compress_ratio ${RATIO}%
                 } | column -t
-
         else
                 WARN "Zswap unavailable"
+        fi
+        if zramctl | grep -q '[SWAP]'; then
+                echo ZRam:
+                zramctl  | \
+
+                        grep -e '^NAME\|\[SWAP\]' | \
+                        sed 's/^/. /g' | \
+                        column -t \
+                                --table-columns \.,NAME,ALGORITHM,DISKSIZE,DATA,COMPR,TOTAL,STREAMS,MOUNTPOINT \
+                                -H MOUNTPOINT | \
+                                uniq
         fi
     ;;
     *) help ;;
