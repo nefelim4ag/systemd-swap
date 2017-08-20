@@ -258,18 +258,17 @@ case "$1" in
         INFO "Load config"
         # shellcheck source=/run/systemd/swap/swap.conf
         . $B_CONF
-        if YN $zswap_enabled; then
-            [ ! -d /sys/module/zswap ] && ERRO "Zswap - not supported on current kernel"
+
+        if [ -d $WORK_DIR/zswap/ ]; then
             ZSWAP_P=/sys/module/zswap/parameters/
             INFO "Zswap: restore configuration: start"
-            mkdir -p $WORK_DIR/zswap/
             for file in $WORK_DIR/zswap/*; do
                 cp "$file" "$ZSWAP_P/$(basename $file)"
             done
             INFO "Zswap: restore configuration: complete"
         fi
 
-        if YN $zram_enabled; then
+        if [ -d $WORK_DIR/zram/ ]; then
             for zram in $WORK_DIR/zram/*; do
                 [ ! -b $zram ] && continue
                 INFO "Zram: removing: /dev/$(basename $zram)"
@@ -280,7 +279,7 @@ case "$1" in
             done
         fi
 
-        if YN $swapfu_enabled; then
+        if [ -d $WORK_DIR/swapfu/ ]; then
             for device in $WORK_DIR/swapfu/*; do
                 [ ! -b "$device" ] && continue
                 swapoff $device && \
@@ -289,7 +288,7 @@ case "$1" in
             done
         fi
 
-        if YN $swapfc_enabled; then
+        if [ -d $WORK_DIR/swapfc/ ]; then
             swapfc_path=${swapfc_path:-"/var/lib/systemd-swap/swapfc/"}
             [ -f $WORK_DIR/swapfc/.lock ] && \
                 rm $WORK_DIR/swapfc/.lock
@@ -301,10 +300,10 @@ case "$1" in
                 swapoff $file && rm $file
                 rm "$swapfc_path/$(basename $file)"
             done
-            [ -d $swapfc_path ] && rm -rf $swapfc_path
+            [ -d $swapfc_path ] && rmdir $swapfc_path
         fi
 
-        if YN $swapd_auto_swapon; then
+        if [ -d $WORK_DIR/swapd/ ]; then
             for device in $WORK_DIR/swapd/*; do
                 [ ! -b "$device" ] && continue
                 swapoff $device && \
@@ -313,7 +312,7 @@ case "$1" in
             done
         fi
 
-        [ -d $WORK_DIR ] && rm -rf $WORK_DIR
+        rm -rf $WORK_DIR
     ;;
 
     *) help ;;
