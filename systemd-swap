@@ -22,7 +22,7 @@ write(){
 }
 
 help(){
-    echo "$0 start|stop"
+    echo "$0 start|stop|status"
 }
 
 get_fs_type(){ stat -f "$1" | grep Type: | tr -s ' ' | cut -d' ' -f7; }
@@ -314,6 +314,29 @@ case "$1" in
 
         rm -rf $WORK_DIR
     ;;
+    status)
+        check_root_rights
+        if [ -d /sys/module/zswap ]; then
+                echo Zswap:
+                read USED_BYTES   < /sys/kernel/debug/zswap/pool_total_size
+                USED_PAGES=$((USED_BYTES/4096))
+                read STORED_PAGES < /sys/kernel/debug/zswap/stored_pages
+                RATIO=$((USED_PAGES*100/STORED_PAGES))
+                {
+                        grep . /sys/module/zswap/parameters/* | \
+                                cut -d'/' -f 6 | \
+                                sed -e 's/:/ /g' -e 's/^/. /g'
+                } | column -t
+                {
+                        grep . /sys/kernel/debug/zswap/* | \
+                                cut -d'/' -f6 | \
+                                sed -e 's/:/ /g' -e 's/^/. . /g' | column -t
+                        echo . . compress_ratio ${RATIO}%
+                } | column -t
 
+        else
+                WARN "Zswap unavailable"
+        fi
+    ;;
     *) help ;;
 esac
