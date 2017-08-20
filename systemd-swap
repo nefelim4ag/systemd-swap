@@ -319,9 +319,18 @@ case "$1" in
         if [ -d /sys/module/zswap ]; then
                 echo Zswap:
                 read USED_BYTES   < /sys/kernel/debug/zswap/pool_total_size
-                USED_PAGES=$((USED_BYTES/4096))
+                PAGE_SIZE=$(getconf PAGESIZE)
+                USED_PAGES=$((USED_BYTES/$PAGE_SIZE))
                 read STORED_PAGES < /sys/kernel/debug/zswap/stored_pages
+                STORED_BYTES=$((STORED_PAGES*$PAGE_SIZE))
+                SWAP_STORE_USED_BYTES=( $(swapon --bytes | awk '{print $4}' | grep -v USED) )
                 RATIO=$((USED_PAGES*100/STORED_PAGES))
+                SUM=0
+                if ((${#SWAP_STORE_USED_BYTES[@]} > 0)); then
+                        for val in "${SWAP_STORE_USED_BYTES[@]}"; do
+                                SUM=$((SUM+val))
+                        done
+                fi
                 {
                         grep . /sys/module/zswap/parameters/* | \
                                 cut -d'/' -f 6 | \
@@ -332,14 +341,16 @@ case "$1" in
                                 cut -d'/' -f6 | \
                                 sed -e 's/:/ /g' -e 's/^/. . /g' | column -t
                         echo . . compress_ratio ${RATIO}%
+                        ((SUM > 0)) && \
+                                echo . . zswap_store/swap_store ${STORED_BYTES}/${SUM} $((STORED_BYTES*100/SUM))%
                 } | column -t
+
         else
                 WARN "Zswap unavailable"
         fi
         if zramctl | grep -q '[SWAP]'; then
                 echo ZRam:
                 zramctl  | \
-
                         grep -e '^NAME\|\[SWAP\]' | \
                         sed 's/^/. /g' | \
                         column -t \
