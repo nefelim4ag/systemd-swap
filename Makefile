@@ -4,10 +4,11 @@ default:  help
 
 install: ## Install systemd-swap
 install:
-	mkdir -p 								$(PREFIX)/var/lib/systemd-swap
-	install -Dm755	./systemd-swap 			$(PREFIX)/usr/bin/systemd-swap
+	mkdir -p 				$(PREFIX)/var/lib/systemd-swap
+	install -Dm755	./systemd-swap 		$(PREFIX)/usr/bin/systemd-swap
 	install -Dm644	./systemd-swap.service  $(PREFIX)/lib/systemd/system/systemd-swap.service
-	install -bDm644 -S .old	./swap.conf		$(PREFIX)/etc/systemd/swap.conf
+	install -bDm644 -S .old	./swap.conf	$(PREFIX)/etc/systemd/swap.conf
+	mkdir -p 				$(PREFIX)/etc/systemd/swap.conf.d/
 
 uninstall: ## Delete systemd-swap (stop systemd-swap first)
 uninstall:

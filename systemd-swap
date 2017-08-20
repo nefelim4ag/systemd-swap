@@ -50,6 +50,13 @@ case "$1" in
         [ -f $B_CONF ] && ERRO "systemd-swap already started!"
         INFO "Backup config"
         cp $CONF $B_CONF
+        if [ -d /etc/systemd/swap.conf.d/ ]; then
+                for file in /etc/systemd/swap.conf.d/*.conf; do
+                        [ ! -f "$file" ] && contine
+                        INFO "Load: $file"
+                        cat "$file" >> $B_CONF
+                done
+        fi
         INFO "Load config"
         # shellcheck source=/run/systemd/swap/swap.conf
         . $B_CONF
