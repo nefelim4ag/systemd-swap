@@ -266,39 +266,19 @@ case "$1" in
         # shellcheck source=/run/systemd/swap/swap.conf
         . $B_CONF
 
-        if [ -d $WORK_DIR/zswap/ ]; then
-            ZSWAP_P=/sys/module/zswap/parameters/
-            INFO "Zswap: restore configuration: start"
-            for file in $WORK_DIR/zswap/*; do
-                cp "$file" "$ZSWAP_P/$(basename $file)"
-            done
-            INFO "Zswap: restore configuration: complete"
-        fi
-
-        if [ -d $WORK_DIR/zram/ ]; then
-            for zram in $WORK_DIR/zram/*; do
-                [ ! -b $zram ] && continue
-                INFO "Zram: removing: /dev/$(basename $zram)"
-                swapoff $zram && \
-                    zramctl -r "$(basename $zram)" && \
-                        rm $zram && \
-                            INFO "Zram: removed: /dev/$(basename $zram)"
-            done
-        fi
-
-        if [ -d $WORK_DIR/swapfu/ ]; then
-            for device in $WORK_DIR/swapfu/*; do
+        if [ -d $WORK_DIR/swapd/ ]; then
+            for device in $WORK_DIR/swapd/*; do
                 [ ! -b "$device" ] && continue
+                INFO "swapD: swapoff: $device start"
                 swapoff $device && \
-                    rm $device && \
-                        INFO "swapF: stopped /dev/$(basename $device)"
+                  rm $device && \
+                    INFO "swapD: swapoff: $device complete"
             done
         fi
 
         if [ -d $WORK_DIR/swapfc/ ]; then
             swapfc_path=${swapfc_path:-"/var/lib/systemd-swap/swapfc/"}
-            [ -f $WORK_DIR/swapfc/.lock ] && \
-                rm $WORK_DIR/swapfc/.lock
+            rm -f $WORK_DIR/swapfc/.lock
             # wait two times
             sleep $swapfc_frequency
             sleep $swapfc_frequency
@@ -310,13 +290,33 @@ case "$1" in
             [ -d $swapfc_path ] && rmdir $swapfc_path
         fi
 
-        if [ -d $WORK_DIR/swapd/ ]; then
-            for device in $WORK_DIR/swapd/*; do
+        if [ -d $WORK_DIR/swapfu/ ]; then
+            for device in $WORK_DIR/swapfu/*; do
                 [ ! -b "$device" ] && continue
                 swapoff $device && \
                     rm $device && \
-                        INFO "swapD: disabled device: $device"
+                        INFO "swapF: stopped /dev/$(basename $device)"
             done
+        fi
+
+        if [ -d $WORK_DIR/zram/ ]; then
+            for zram in $WORK_DIR/zram/*; do
+                [ ! -b $zram ] && continue
+                INFO "Zram: removing: /dev/$(basename $zram)"
+                swapoff $zram && \
+                  zramctl -r "$(basename $zram)" && \
+                    rm $zram && \
+                      INFO "Zram: removed: /dev/$(basename $zram)"
+            done
+        fi
+
+        if [ -d $WORK_DIR/zswap/ ]; then
+            ZSWAP_P=/sys/module/zswap/parameters/
+            INFO "Zswap: restore configuration: start"
+            for file in $WORK_DIR/zswap/*; do
+                cp "$file" "$ZSWAP_P/$(basename $file)"
+            done
+            INFO "Zswap: restore configuration: complete"
         fi
 
         rm -rf $WORK_DIR
