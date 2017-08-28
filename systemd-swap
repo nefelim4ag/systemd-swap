@@ -370,6 +370,16 @@ case "$1" in
                                 -H MOUNTPOINT | \
                                 uniq
         fi
+        if [ -d /run/systemd/swap/swapfu ]; then
+                {
+                        echo SwapFU:
+                        swapon | grep NAME | sed 's/^/. /g'
+                        for loop in /run/systemd/swap/swapfu/*; do
+                                [ -b $loop ] || continue
+                                swapon | grep "$(basename $loop)"
+                        done | sed 's/^/. /g'
+                } | column -t
+        fi
     ;;
     *) help ;;
 esac
