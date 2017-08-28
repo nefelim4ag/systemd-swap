@@ -208,8 +208,8 @@ case "$1" in
                 chmod 0600 "$file"
                 mkswap "$file" &> /dev/null
             }
-            chunk_size=${swapfc_chunk_size:-"64M"}
-            max_count=${swapfc_max_count:-"64"}
+            chunk_size=${swapfc_chunk_size:-"256M"}
+            max_count=${swapfc_max_count:-"16"}
             free_swap_perc=${swapfc_free_swap_perc:-"15"}
             swapfc_path=${swapfc_path:-"/var/lib/systemd-swap/swapfc/"}
             swapfc_frequency=${swapfc_frequency:-"1s"}
