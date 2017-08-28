@@ -386,6 +386,16 @@ case "$1" in
                         swapon --show TYPE | grep -e 'NAME\|file' | sed 's/^/. /g'
                 } | column -t
         fi
+        if [ -d /run/systemd/swap/swapd ]; then
+                {
+                        echo SwapD:
+                        swapon | grep NAME | sed 's/^/. /g'
+                        for dev in /run/systemd/swap/swapd/*; do
+                                [ -b $dev ] || continue
+                                swapon | grep "$(basename $dev)"
+                        done | sed 's/^/. /g'
+                } | column -t
+        fi
     ;;
     *) help ;;
 esac
