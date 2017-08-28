@@ -56,7 +56,7 @@ case "$1" in
         cp $CONF $B_CONF
         if [ -d /etc/systemd/swap.conf.d/ ]; then
                 for file in /etc/systemd/swap.conf.d/*.conf; do
-                        [ ! -f "$file" ] && continue
+                        [ ! -f "$file" ] && contine
                         INFO "Load: $file"
                         cat "$file" >> $B_CONF
                 done
@@ -201,7 +201,7 @@ case "$1" in
                 fallocate -l "$chunk_size" "$file"
                 # File must not contain holes for XFS/f2fs & etc
                 case "$(get_fs_type $file)" in
-                    ext4);;
+                    ext2|ext3|ext4);;
                     btrfs) ERRO "swapFC: Btrfs doesn't support swap files" ;;
                     *) shred -n1 -z "$file" ;;
                 esac
