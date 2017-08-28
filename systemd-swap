@@ -380,6 +380,15 @@ case "$1" in
                         done | sed 's/^/. /g'
                 } | column -t
         fi
+        if [ -d /run/systemd/swap/swapfc ]; then
+                {
+                        echo SwapFC:
+                        swapon | grep NAME | sed 's/^/. /g'
+                        SWAPFC_REAL_PATH="$(stat /run/systemd/swap/swapfc/1 | grep File: | cut -d' ' -f6)"
+                        SWAPFC_DIR_NAME="$(dirname $SWAPFC_REAL_PATH)"
+                        swapon | grep $SWAPFC_DIR_NAME | sed 's/^/. /g'
+                } | column -t
+        fi
     ;;
     *) help ;;
 esac
