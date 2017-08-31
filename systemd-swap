@@ -31,6 +31,30 @@ help(){
 get_fs_type(){ stat -f "$1" | grep Type: | tr -s ' ' | cut -d' ' -f7; }
 
 ################################################################################
+# Systemd swap unit generator
+UNIT_PATH=/run/systemd/system/
+
+systemd_swapon(){
+        export What Priority Options
+        for i in "$@"; do
+            case $i in
+                What=*)     What="${i//What=/}" ;;
+                Priority=*) Priority="${i//Priority=/}" ;;
+                Options=*)  Options="${i//Options=/}" ;;
+            esac
+        done
+        [ ! -z "$What" ] || return 1
+        UNIT_NAME="$(echo $What | sed -e 's#^/##g' -e 's#/#-#g')"
+        {
+                echo '[Swap]'
+                echo "What=$What"
+                [ -z "$Priority" ] || echo "Priority=$Priority"
+                [ -z "$Options"  ] || echo "Options=$Options"
+        } > "$UNIT_PATH/$UNIT_NAME.swap"
+        systemctl start $UNIT_NAME.swap
+}
+
+################################################################################
 # Initialization
 check_root_rights(){ [ "$UID" == "0" ] || ERRO "Script must be run as root!"; }
 
@@ -131,9 +155,10 @@ case "$1" in
             done
             INFO "Zram: initialized: $zram_dev"
             mkdir -p $WORK_DIR/zram/
-            mkswap "$zram_dev" &> /dev/null && \
-                swapon -d -p $zram_prio "$zram_dev" && \
+            mkswap "$zram_dev" &> /dev/null && {
+                    systemd_swapon What="$zram_dev" Options=discard Priority=$zram_prio && \
                     ln -s $zram_dev $WORK_DIR/zram/
+            }
         fi
 
         swapfu_enabled=${swapfu_enabled:-0}
@@ -167,10 +192,10 @@ case "$1" in
             mkswap $swapfu_loop &> /dev/null
             if YN $swapfu_preallocated; then
                 INFO "swapFU: swapon - discard: disabled"
-                swapon -p $swapfu_prio    $swapfu_loop
+                systemd_swapon What="$swapfu_loop" Priority=$swapfu_prio
             else
                 INFO "swapFU: swapon - discard: enabled"
-                swapon -p $swapfu_prio -d $swapfu_loop
+                systemd_swapon What="$swapfu_loop" Options=discard Priority=$swapfu_prio
             fi
             # set autoclear flag
             losetup -d $swapfu_loop
@@ -233,7 +258,7 @@ case "$1" in
                         allocated=$((allocated+1))
                         INFO "swapFC: free swap: $curr_free_swap_perc < $free_swap_perc - allocate chunk: $allocated"
                         mkswap_w "$chunk_size" "$swapfc_path/$allocated"
-                        swapon "$swapfc_path/$allocated" && \
+                        systemd_swapon What="$swapfc_path/$allocated" && \
                             ln -s "$swapfc_path/$allocated" "$WORK_DIR/swapfc/$allocated"
                     fi
                     if (( $(get_free_swap_perc) > $((free_swap_perc+40)) )) && (( allocated > 2 )); then
@@ -257,9 +282,9 @@ case "$1" in
                     [ "$device" == "$used_device" ] && unset device
                 done
                 [ ! -b "$device" ] && continue
-                swapon -d -p "$swapd_prio" $device &> /dev/null && \
-                    ln -s $device $WORK_DIR/swapd/ && \
-                        INFO "swapD: enabled device: $device"
+                systemd_swapon What="$device" Options=discard Priority="$swapd_prio" || continue
+                ln -s $device $WORK_DIR/swapd/ || continue
+                INFO "swapD: enabled device: $device"
                 swapd_prio=$((swapd_prio-1))
             done
         fi
