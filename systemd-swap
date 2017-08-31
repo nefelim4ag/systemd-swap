@@ -166,30 +166,37 @@ case "$1" in
             swapfu_size=${swapfu_size:-"${ram_size}K"}
             swapfu_path=${swapfu_path:-"/var/lib/systemd-swap/swapfu"}
             swapfu_prio=${swapfu_prio:-"-1024"}
+
             INFO "swapFU: create empty file"
             mkdir -p "$(dirname $swapfu_path)"
-            touch $swapfu_path
+
             swapfu_nocow=${swapfu_nocow:-1}
             if YN $swapfu_nocow; then
                 INFO "swapFU: mark file $swapfu_path nocow"
+                touch $swapfu_path
                 chattr +C $swapfu_path
             fi
+
             INFO "swapFU: max file size: 0 -> $swapfu_size"
-            truncate -s $swapfu_size $swapfu_path
             swapfu_preallocated=${swapfu_preallocated:-0}
             if YN $swapfu_preallocated; then
                 INFO "swapFU: preallocate $swapfu_size"
                 fallocate -l $swapfu_size $swapfu_path
+            else
+                truncate -s $swapfu_size $swapfu_path
             fi
-            INFO "swapFU: searching free loop"
+
+            INFO "swapFU: attach $swapfu_path to free loop"
             swapfu_loop=$(losetup -f --show $swapfu_path)
             INFO "swapFU: using $swapfu_loop"
             # loop uses file descriptor, the file still exists,
             # but does not have a path like O_TMPFILE
             # When loop detaches a file, the file will be deleted.
             rm $swapfu_path
+
             INFO "swapFU: initialize swap device $swapfu_loop"
             mkswap $swapfu_loop &> /dev/null
+
             if YN $swapfu_preallocated; then
                 INFO "swapFU: swapon - discard: disabled"
                 systemd_swapon What="$swapfu_loop" Priority=$swapfu_prio
@@ -197,8 +204,13 @@ case "$1" in
                 INFO "swapFU: swapon - discard: enabled"
                 systemd_swapon What="$swapfu_loop" Options=discard Priority=$swapfu_prio
             fi
+
+            mkdir -p $WORK_DIR/swapfu
+            ln -s $swapfu_loop $WORK_DIR/swapfu/
+
             # set autoclear flag
             losetup -d $swapfu_loop
+
             swapfu_directio=${swapfu_directio:-0}
             if YN $swapfu_directio; then
                 INFO "swapFU: enable directio for $swapfu_loop"
@@ -207,8 +219,6 @@ case "$1" in
                 INFO "swapFU: disable directio for $swapfu_loop"
                 losetup --direct-io=off $swapfu_loop
             fi
-            mkdir -p $WORK_DIR/swapfu
-            ln -s $swapfu_loop $WORK_DIR/swapfu/
         fi
 
         swapfc_enabled=${swapfc_enabled:-0}
