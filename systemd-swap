@@ -45,7 +45,11 @@ systemd_swapon(){
         done
         [ ! -z "$What" ] || return 1
         What="$(realpath $What)"
-        UNIT_NAME="$(echo $What | sed -e 's#^/##g' -e 's#-#\\x2d#g' -e 's#@#\\x40#g' -e 's#/#-#g')"
+        UNIT_NAME="$What"
+        UNIT_NAME="$(echo $UNIT_NAME | sed -e 's#^/##g')" # Cleanup leading slash
+        UNIT_NAME="${UNIT_NAME//-/\\x2d}" # Fix '-' for unit name
+        UNIT_NAME="${UNIT_NAME//@/\\x40}" # Fix '@' for unit name
+        UNIT_NAME="${UNIT_NAME//\//-}"    # Replace '/' with -
         {
                 echo '[Swap]'
                 echo "What=$What"
