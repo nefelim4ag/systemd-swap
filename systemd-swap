@@ -44,7 +44,7 @@ systemd_swapon(){
             esac
         done
         [ ! -z "$What" ] || return 1
-        UNIT_NAME="$(echo $What | sed -e 's#^/##g' -e 's#/#-#g')"
+        UNIT_NAME="$(echo $What | sed -e 's#//#/#g' -e 's#^/##g' -e 's#-#\\x2d#g' -e 's#/#-#g')"
         {
                 echo '[Swap]'
                 echo "What=$What"
