@@ -16,7 +16,7 @@ CPUAccounting=true
 CPUQuota=5%
 MemoryHigh=16M
 MemoryMax=64M
-ProtectHome=true
+ProtectHome=read-only
 
 [Install]
 WantedBy=local-fs.target
