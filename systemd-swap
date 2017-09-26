@@ -32,9 +32,8 @@ get_fs_type(){ stat -f "$1" | grep Type: | tr -s ' ' | cut -d' ' -f7; }
 
 ################################################################################
 # Systemd swap unit generator
-UNIT_PATH=/run/systemd/system/
-
 systemd_swapon(){
+        UNIT_PATH=/run/systemd/system/
         export What Priority Options
         for i in "$@"; do
             case $i in
@@ -45,11 +44,7 @@ systemd_swapon(){
         done
         [ ! -z "$What" ] || return 1
         What="$(realpath $What)"
-        UNIT_NAME="$What"
-        UNIT_NAME="$(echo $UNIT_NAME | sed -e 's#^/##g')" # Cleanup leading slash
-        UNIT_NAME="${UNIT_NAME//-/\\x2d}" # Fix '-' for unit name
-        UNIT_NAME="${UNIT_NAME//@/\\x40}" # Fix '@' for unit name
-        UNIT_NAME="${UNIT_NAME//\//-}"    # Replace '/' with -
+        UNIT_NAME="$(systemd-escape -p $What)"
         {
                 echo '[Swap]'
                 echo "What=$What"
