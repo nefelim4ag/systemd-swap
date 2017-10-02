@@ -167,6 +167,8 @@ case "$1" in
             swapfu_path=${swapfu_path:-"/var/lib/systemd-swap/swapfu"}
             swapfu_prio=${swapfu_prio:-"-1024"}
 
+            [ -d "$swapfu_path" ] && swapfu_path="${swapfu_path}/${RANDOM}_swapfu"
+
             INFO "swapFU: create empty file"
             mkdir -p "$(dirname $swapfu_path)"
 
