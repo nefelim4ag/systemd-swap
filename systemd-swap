@@ -28,7 +28,7 @@ help(){
     echo "   status - show some swap status info"
 }
 
-get_fs_type(){ stat -f "$1" | grep Type: | tr -s ' ' | cut -d' ' -f7; }
+get_fs_type(){ stat -fc "%T" "$1"; }
 
 ################################################################################
 # Systemd swap unit generator
