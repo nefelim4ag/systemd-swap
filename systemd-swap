@@ -55,6 +55,7 @@ systemd_swapon(){
                 [ -z "$Priority" ] || echo "Priority=$Priority"
                 [ -z "$Options"  ] || echo "Options=$Options"
         } > "$UNIT_PATH/$UNIT_NAME.swap"
+        systemctl daemon-reload
         mkdir -p $UNIT_PATH/swap.target.wants
         ln -srf "$UNIT_PATH/$UNIT_NAME.swap" $UNIT_PATH/swap.target.wants/
         [ -d /run/systemd/generator.late/swap.target.wants ] && \
@@ -309,6 +310,14 @@ case "$1" in
         swapd_auto_swapon=${swapd_auto_swapon:-1}
         if YN $swapd_auto_swapon; then
             swapd_prio=${swapd_prio:-1024}
+            INFO "swapD: pickup devices from systemd-gpt-auto-generator"
+            SWAP_UNITS=(
+                $(grep -R systemd-gpt-auto-generator /run/systemd/generator.late | cut -d':' -f1 | sort -u)
+            )
+            for unit in "${SWAP_UNITS[@]}"; do
+                    systemctl stop $(basename $unit)
+                    rm -f $unit
+            done
             INFO "swapD: searching swap devices"
             mkdir -p $WORK_DIR/swapd/
             for device in $(blkid -t TYPE=swap -o device | grep -vE '(zram|loop)'); do
