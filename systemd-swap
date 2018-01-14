@@ -46,12 +46,30 @@ systemd_swapon(){
         What="$(realpath $What)"
         UNIT_NAME="$(systemd-escape -p $What)"
         {
+                echo '[Unit]'
+                echo 'Description=Swap Partition'
+                echo 'Documentation=https://github.com/Nefelim4ag/systemd-swap'
+                echo
                 echo '[Swap]'
                 echo "What=$What"
                 [ -z "$Priority" ] || echo "Priority=$Priority"
                 [ -z "$Options"  ] || echo "Options=$Options"
         } > "$UNIT_PATH/$UNIT_NAME.swap"
         systemctl start $UNIT_NAME.swap
+}
+
+systemd_swapoff(){
+        export What
+        for i in "$@"; do
+            case $i in
+                What=*)     What="${i//What=/}" ;;
+            esac
+        done
+        [ ! -z "$What" ] || return 1
+        What="$(realpath $What)"
+        UNIT_NAME="$(systemd-escape -p $What)"
+        systemctl stop $UNIT_NAME.swap
+        INFO "swapoff: $What complete"
 }
 
 ################################################################################
@@ -308,13 +326,15 @@ case "$1" in
         # shellcheck source=/run/systemd/swap/swap.conf
         . $B_CONF
 
+        SWAP_UNITS=( $(systemctl list-units | grep '\.swap') )
+
         if [ -d $WORK_DIR/swapd/ ]; then
             for device in $WORK_DIR/swapd/*; do
                 [ ! -b "$device" ] && continue
+                WHAT="$(realpath $device)"
                 INFO "swapD: swapoff: $device start"
-                swapoff $device || continue
-                rm $device      || continue
-                INFO "swapD: swapoff: $device complete"
+                systemd_swapoff What="$WHAT" &
+                rm $device || continue
             done
         fi
 
@@ -326,7 +346,11 @@ case "$1" in
             sleep $swapfc_frequency
             for file in $WORK_DIR/swapfc/*; do
                 [ -f "$file" ] || continue
-                swapoff $file  || continue
+                systemd_swapoff What="$file" || continue &
+            done
+            wait
+            for file in $WORK_DIR/swapfc/*; do
+                [ -f "$file" ] || continue
                 rm -f $file "$swapfc_path/$(basename $file)"
             done
             [ -d $swapfc_path ] && rmdir $swapfc_path
@@ -335,9 +359,9 @@ case "$1" in
         if [ -d $WORK_DIR/swapfu/ ]; then
             for device in $WORK_DIR/swapfu/*; do
                 [ -b "$device" ] || continue
-                swapoff $device  || continue
-                rm $device       || continue
-                INFO "swapF: stopped /dev/$(basename $device)"
+                WHAT="$(realpath $device)"
+                systemd_swapoff What="$WHAT" &
+                rm $device || continue
             done
         fi
 
@@ -345,10 +369,14 @@ case "$1" in
             for zram in $WORK_DIR/zram/*; do
                 [ -b $zram ]    || continue
                 INFO "Zram: removing: /dev/$(basename $zram)"
-                swapoff $zram   || continue
+                WHAT="$(realpath $zram)"
+                systemd_swapoff What="$WHAT" &
+            done
+            wait
+            for zram in $WORK_DIR/zram/*; do
+                [ -b $zram ]    || continue
                 zramctl -r "$(basename $zram)" || continue
                 rm $zram        || continue
-                INFO "Zram: removed: /dev/$(basename $zram)"
             done
         fi
 
@@ -360,6 +388,8 @@ case "$1" in
             done
             INFO "Zswap: restore configuration: complete"
         fi
+
+        wait
 
         rm -rf $WORK_DIR
     ;;
