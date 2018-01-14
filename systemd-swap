@@ -55,6 +55,8 @@ systemd_swapon(){
                 [ -z "$Priority" ] || echo "Priority=$Priority"
                 [ -z "$Options"  ] || echo "Options=$Options"
         } > "$UNIT_PATH/$UNIT_NAME.swap"
+        [ -d /run/systemd/generator.late/swap.target.wants ] && \
+                ln -srf "$UNIT_PATH/$UNIT_NAME.swap" /run/systemd/generator.late/swap.target.wants/
         systemctl start $UNIT_NAME.swap
 }
 
