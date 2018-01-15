@@ -149,6 +149,7 @@ case "$1" in
             zram_streams=${zram_streams:-$cpu_count}
             zram_alg=${zram_alg:-"lz4"}
             zram_prio=${zram_prio:-"32767"}
+            zram_mem_limit=${zram_mem_limit:-0}
             zram_dev=""
             INFO "Zram: check availability"
             if [ ! -d /sys/module/zram ]; then
@@ -185,6 +186,9 @@ case "$1" in
                     /dev/zram*)
                         [ -b "$OUTPUT" ] || continue
                         zram_dev="$OUTPUT"
+                        zram_mem_limit_path="/sys/block/$(basename $zram_dev)/mem_limit"
+                        if [ -w "$zram_mem_limit_path" ]
+                        then echo $zram_mem_limit > "$zram_mem_limit_path"; fi
                         break
                     ;;
                 esac
