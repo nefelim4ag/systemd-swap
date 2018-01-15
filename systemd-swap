@@ -347,8 +347,6 @@ case "$1" in
         # shellcheck source=/run/systemd/swap/swap.conf
         . $B_CONF
 
-        SWAP_UNITS=( $(systemctl list-units | grep '\.swap') )
-
         if [ -d $WORK_DIR/swapd/ ]; then
             for device in $WORK_DIR/swapd/*; do
                 [ ! -b "$device" ] && continue
