@@ -1,9 +1,9 @@
 #!/bin/bash
 ################################################################################
 # echo wrappers
-INFO(){ echo -n "INFO: "; echo "$@" ;}
-WARN(){ echo -n "WARN: "; echo "$@" ;}
-ERRO(){ echo -n "ERRO: "; echo "$@" ; exit 1;}
+INFO(){ echo "INFO: $*";}
+WARN(){ echo "WARN: $*";}
+ERRO(){ echo "ERRO: $*"; exit 1;}
 
 ################################################################################
 # Helpers
@@ -78,15 +78,10 @@ systemd_swapon(){
 
 systemd_swapoff(){
         export What
-        for i in "$@"; do
-            case $i in
-                What=*)     What="${i//What=/}" ;;
-            esac
-        done
+        What="${1//What=/}"
         [ ! -z "$What" ] || return 1
         What="$(realpath $What)"
-        UNIT_NAME="$(systemd-escape -p $What)"
-        systemctl stop $UNIT_NAME.swap
+        swapoff $What
         INFO "swapoff: $What complete"
 }
 
