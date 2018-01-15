@@ -34,7 +34,13 @@ get_fs_type(){ stat -fc "%T" "$1"; }
 # Systemd swap unit generator
 systemd_swapon(){
         UNIT_PATH=/run/systemd/system/
-        export What Priority Options
+        # Swap devs must be linked to swap.target
+        # But swapfiles must be linked to local-fs.target
+        # Because local-fs.target stops before swap.target
+        mkdir -p "$UNIT_PATH/local-fs.target.wants"
+        mkdir -p "$UNIT_PATH/swap.target.wants"
+
+        export What Priority Options Type
         for i in "$@"; do
             case $i in
                 What=*)     What="${i//What=/}" ;;
@@ -45,21 +51,28 @@ systemd_swapon(){
         [ ! -z "$What" ] || return 1
         What="$(realpath $What)"
         UNIT_NAME="$(systemd-escape -p $What)"
+        Unit="$UNIT_PATH/$UNIT_NAME.swap"
+        [ -b "$What" ] && Type="Block/Partition"
+        [ -b "$What" ] && [[ "$What" =~ loop ]] && Type="File"
+        [ -f "$What" ] && Type="File"
         {
                 echo '[Unit]'
-                echo 'Description=Swap Partition'
+                echo "Description=Swap $Type"
                 echo 'Documentation=https://github.com/Nefelim4ag/systemd-swap'
                 echo
                 echo '[Swap]'
                 echo "What=$What"
                 [ -z "$Priority" ] || echo "Priority=$Priority"
                 [ -z "$Options"  ] || echo "Options=$Options"
-        } > "$UNIT_PATH/$UNIT_NAME.swap"
+        } > "$Unit"
         systemctl daemon-reload
-        mkdir -p $UNIT_PATH/swap.target.wants
-        ln -srf "$UNIT_PATH/$UNIT_NAME.swap" $UNIT_PATH/swap.target.wants/
-        [ -d /run/systemd/generator.late/swap.target.wants ] && \
-                ln -srf "$UNIT_PATH/$UNIT_NAME.swap" /run/systemd/generator.late/swap.target.wants/
+        if [[ "$Type" == "File" ]]; then
+                ln -srf "$Unit" $UNIT_PATH/local-fs.target.wants/
+        else
+                ln -srf "$Unit" $UNIT_PATH/swap.target.wants/
+                [ -d /run/systemd/generator.late/swap.target.wants ] && \
+                        ln -srf "$Unit" /run/systemd/generator.late/swap.target.wants/
+        fi
         systemctl start $UNIT_NAME.swap
 }
 
