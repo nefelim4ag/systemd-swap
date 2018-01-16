@@ -2,6 +2,7 @@
 Description=Manage swap spaces on zram, files and partitions.
 After=local-fs.target
 RequiresMountsFor=/
+RequiresMountsFor=/run
 RequiresMountsFor=/sys
 RequiresMountsFor=/var
 
@@ -13,9 +14,6 @@ TimeoutStopSec=600
 Nice=-19
 OOMScoreAdjust=-1000
 CPUAccounting=true
-CPUQuota=5%
-MemoryHigh=16M
-MemoryMax=64M
 ProtectHome=read-only
 
 [Install]
