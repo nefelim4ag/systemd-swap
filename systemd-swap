@@ -309,8 +309,7 @@ case "$1" in
                     if (( $(get_free_swap_perc) > $((free_swap_perc+40)) )) && (( allocated > 2 )); then
                         INFO "swapFC: free swap: $curr_free_swap_perc > $((free_swap_perc+40)) - freeup chunk: $allocated"
                         swapoff "$WORK_DIR/swapfc/$allocated" && \
-                            rm "$swapfc_path/$allocated" && \
-                            rm "$WORK_DIR/swapfc/$allocated"
+                            rm -f "$swapfc_path/$allocated" "$WORK_DIR/swapfc/$allocated"
                         allocated=$((allocated-1))
                     fi
                 done
