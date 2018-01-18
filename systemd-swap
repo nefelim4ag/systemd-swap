@@ -325,7 +325,7 @@ case "$1" in
                                 if grep -q systemd-gpt-auto-generator $UNIT_PATH; then
                                         DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
                                         UNIT_NAME=$(basename $UNIT_PATH)
-                                        systemctl stop "$UNIT_NAME" || swapoff "$DEV"
+                                        swapoff "$DEV"
                                         rm -f "$UNIT_NAME"
                                 fi
                         done
@@ -352,7 +352,7 @@ case "$1" in
                         if grep -q swapd $UNIT_PATH; then
                                 DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
                                 UNIT_NAME=$(basename $UNIT_PATH)
-                                systemctl stop "$UNIT_NAME" || swapoff "$DEV"
+                                swapoff "$DEV"
                                 rm -f "$UNIT_NAME"
                         fi
                 done
@@ -366,7 +366,7 @@ case "$1" in
                         if grep -q swapfc $UNIT_PATH; then
                                 DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
                                 UNIT_NAME=$(basename $UNIT_PATH)
-                                systemctl stop "$UNIT_NAME" || swapoff "$DEV"
+                                swapoff "$DEV"
                                 rm -f "$UNIT_NAME"
                                 [ -f $DEV ] && rm -f $DEV
                         fi
@@ -377,7 +377,7 @@ case "$1" in
                                 DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
                                 UNIT_NAME=$(basename $UNIT_PATH)
                                 INFO "Zram: swapoff $DEV"
-                                systemctl stop "$UNIT_NAME" || swapoff "$DEV"
+                                swapoff "$DEV"
                                 rm -f $UNIT_PATH
                                 zramctl -r "$DEV"
                         fi
