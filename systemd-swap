@@ -398,7 +398,7 @@ case "$1" in
         status)
                 SWAP_TOTAL=$(grep SwapTotal: /proc/meminfo | grep -o '[0-9]*')
                 SWAP_FREE=$(grep SwapFree: /proc/meminfo | grep -o '[0-9]*')
-                SWAP_USED=$((SWAP_TOTAL-SWAP_FREE))
+                SWAP_USED=$(((SWAP_TOTAL-SWAP_FREE)*1024))
 
                 if [ -d /sys/module/zswap ]; then
                         echo Zswap:
