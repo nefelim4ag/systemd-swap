@@ -266,7 +266,11 @@ case "$1" in
                                                 rm "$file"
                                         ;;
                                         *)
-                                                shred -n1 -z "$file"
+                                                # -z rewrite file second time
+                                                # By default shred gen random
+                                                # Speedup rewrite by rewrite
+                                                # one time with zeroes
+                                                shred -n1 --random-source=/dev/zero "$file"
                                         ;;
                                 esac
                                 echo "$RET"
