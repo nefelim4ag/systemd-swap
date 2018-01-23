@@ -236,6 +236,16 @@ case "$1" in
                                 echo $(( (${free}*100)/(${total}+1) ));
                         }
 
+                        to_bytes(){ numfmt --to=none --from=iec "$1"; }
+
+                        chunk_size=$(to_bytes $chunk_size)
+                        BLOCK_SIZE=$(stat -f -c %s "$swapfc_path")
+                        FSTYPE="$(get_fs_type $swapfc_path)"
+
+                        YN $swapfc_force_use_loop && FSTYPE=btrfs
+
+                        [ "$FSTYPE" != btrfs ] && swapfc_force_preallocated=1
+
                         # Return empty on space check error
                         prepare_swapfile(){
                                 chunk_size="$1" file="$2"
@@ -246,22 +256,24 @@ case "$1" in
 
                                 # Check free space
                                 # For avoid problems on swap io + ENOSPC
-                                if ! fallocate -l "$chunk_size" "$file"; then
+                                FREE_BLOCKS=$(stat -f -c %f "$file" )
+                                FREE_BYTES=$((FREE_BLOCKS*BLOCK_SIZE))
+                                # also try leave some free space
+                                FREE_BYTES=$((FREE_BYTES - chunk_size))
+                                if ((FREE_BYTES < chunk_size)); then
                                         echo
                                         return
                                 fi
 
-                                fallocate -p -l "$chunk_size" "$file"
-                                YN $swapfc_force_preallocated && fallocate -l "$chunk_size" "$file"
-
-                                FSTYPE="$(get_fs_type $file)"
-                                YN $swapfc_force_use_loop && FSTYPE=btrfs
+                                if YN $swapfc_force_preallocated; then
+                                        fallocate -l "$chunk_size" "$file"
+                                else
+                                        truncate -s "$chunk_size" "$file"
+                                fi
 
                                 RET="$file"
                                 case "$FSTYPE" in
-                                        ext2|ext3|ext4)
-                                                fallocate -l "$chunk_size" "$file"
-                                        ;;
+                                        ext2|ext3|ext4) ;;
                                         btrfs)
                                                 RET=$(losetup -f --show $file)
                                                 if YN $swapfc_directio; then
