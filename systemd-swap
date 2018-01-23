@@ -321,7 +321,11 @@ case "$1" in
                                                         continue
                                                 fi
                                                 mkswap "$swapfile"
-                                                UNIT_NAME=$(gen_swap_unit What="$swapfile" Options=discard Tag="swapfc_$allocated")
+                                                if YN $swapfc_force_preallocated; then
+                                                        UNIT_NAME=$(gen_swap_unit What="$swapfile" Tag="swapfc_$allocated")
+                                                else
+                                                        UNIT_NAME=$(gen_swap_unit What="$swapfile" Options=discard Tag="swapfc_$allocated")
+                                                fi
                                                 systemctl daemon-reload
                                                 systemctl start $UNIT_NAME
                                                 if [ -b "$swapfile" ]; then
