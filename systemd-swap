@@ -245,24 +245,24 @@ case "$1" in
 
                         [ "$FSTYPE" != btrfs ] && swapfc_force_preallocated=1
 
-                        # Return empty on space check error
+                        check_ENOSPC(){
+                                path="$1"
+                                # Check free space
+                                # For avoid problems on swap io + ENOSPC
+                                FREE_BLOCKS=$(stat -f -c %f "$path" )
+                                FREE_BYTES=$((FREE_BLOCKS*BLOCK_SIZE))
+                                # also try leave some free space
+                                FREE_BYTES=$((FREE_BYTES - chunk_size))
+                                ((FREE_BYTES < chunk_size)) && return 0
+                                return 1
+                        }
+
                         prepare_swapfile(){
                                 chunk_size="$1" file="$2"
                                 touch "$file"
                                 chmod 0600 "$file"
 
                                 YN $swapfc_nocow && chattr +C "$file"
-
-                                # Check free space
-                                # For avoid problems on swap io + ENOSPC
-                                FREE_BLOCKS=$(stat -f -c %f "$file" )
-                                FREE_BYTES=$((FREE_BLOCKS*BLOCK_SIZE))
-                                # also try leave some free space
-                                FREE_BYTES=$((FREE_BYTES - chunk_size))
-                                if ((FREE_BYTES < chunk_size)); then
-                                        echo
-                                        return
-                                fi
 
                                 if YN $swapfc_force_preallocated; then
                                         fallocate -l "$chunk_size" "$file"
@@ -313,14 +313,13 @@ case "$1" in
                                 while [ -f $WORK_DIR/swapfc/.lock ] && sleep $swapfc_frequency; do
                                         curr_free_swap_perc=$(get_free_swap_perc)
                                         if (( curr_free_swap_perc < free_threshold_up )) && (( allocated < swapfc_max_count )); then
+                                                if check_ENOSPC "$swapfc_path"; then
+                                                        WARN "swapFC: ENOSPC"
+                                                        continue
+                                                fi
                                                 allocated=$((allocated+1))
                                                 INFO "swapFC: free swap: $curr_free_swap_perc < $free_threshold_up - allocate chunk: $allocated"
                                                 swapfile=$(prepare_swapfile "$chunk_size" "$swapfc_path/$allocated")
-                                                if [ -z "$swapfile" ]; then
-                                                        allocated=$((allocated-1))
-                                                        WARN "swapFC: problem with create new swapfile"
-                                                        continue
-                                                fi
                                                 mkswap -L SWAP_${FSTYPE}_${allocated} "$swapfile" | sed ':a;N;$!ba;s/)\n/), /g'
                                                 if YN $swapfc_force_preallocated; then
                                                         UNIT_NAME=$(gen_swap_unit What="$swapfile" Tag="swapfc_$allocated")
