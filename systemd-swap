@@ -271,21 +271,23 @@ case "$1" in
                                         truncate -s "$chunk_size" "$file"
                                 fi
 
+                                losetup_w(){
+                                        file="$1"
+                                        if YN $swapfc_directio; then
+                                                losetup -f --show --direct-io=on  "$file"
+                                        else
+                                                losetup -f --show --direct-io=off "$file"
+                                        fi
+                                        # loop uses file descriptor, the file still exists,
+                                        # but does not have a path like O_TMPFILE
+                                        # When loop detaches a file, the file will be deleted.
+                                        rm "$file"
+                                }
+
                                 RET="$file"
                                 case "$FSTYPE" in
                                         ext2|ext3|ext4) ;;
-                                        btrfs)
-                                                RET=$(losetup -f --show $file)
-                                                if YN $swapfc_directio; then
-                                                        losetup --direct-io=on  "$RET"
-                                                else
-                                                        losetup --direct-io=off "$RET"
-                                                fi
-                                                # loop uses file descriptor, the file still exists,
-                                                # but does not have a path like O_TMPFILE
-                                                # When loop detaches a file, the file will be deleted.
-                                                rm "$file"
-                                        ;;
+                                        btrfs) RET=$(losetup_w $file) ;;
                                         *)
                                                 # -z rewrite file second time
                                                 # By default shred gen random
