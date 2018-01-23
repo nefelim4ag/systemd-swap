@@ -235,6 +235,8 @@ case "$1" in
                                 free=$((free*1024))
                                 echo $(( (${free}*100)/(${total}+1) ));
                         }
+
+                        # Return empty on space check error
                         prepare_swapfile(){
                                 chunk_size="$1" file="$2"
                                 touch "$file"
@@ -242,7 +244,14 @@ case "$1" in
 
                                 YN $swapfc_nocow && chattr +C "$file"
 
-                                truncate -s "$chunk_size" "$file"
+                                # Check free space
+                                # For avoid problems on swap io + ENOSPC
+                                if ! fallocate -l "$chunk_size" "$file"; then
+                                        echo
+                                        return
+                                fi
+
+                                fallocate -p -l "$chunk_size" "$file"
                                 YN $swapfc_force_preallocated && fallocate -l "$chunk_size" "$file"
 
                                 FSTYPE="$(get_fs_type $file)"
@@ -292,6 +301,11 @@ case "$1" in
                                                 allocated=$((allocated+1))
                                                 INFO "swapFC: free swap: $curr_free_swap_perc < $free_swap_perc - allocate chunk: $allocated"
                                                 swapfile=$(prepare_swapfile "$chunk_size" "$swapfc_path/$allocated")
+                                                if [ -z "$swapfile" ]; then
+                                                        allocated=$((allocated-1))
+                                                        WARN "swapFC: problem with create new swapfile"
+                                                        continue
+                                                fi
                                                 mkswap "$swapfile"
                                                 UNIT_NAME=$(gen_swap_unit What="$swapfile" Options=discard Tag="swapfc_$allocated")
                                                 systemctl daemon-reload
