@@ -321,7 +321,6 @@ case "$1" in
                                                         continue
                                                 fi
                                                 mkswap -L SWAP_${FSTYPE}_${allocated} "$swapfile" | sed ':a;N;$!ba;s/)\n/), /g'
-                                                echo
                                                 if YN $swapfc_force_preallocated; then
                                                         UNIT_NAME=$(gen_swap_unit What="$swapfile" Tag="swapfc_$allocated")
                                                 else
