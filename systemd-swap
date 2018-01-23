@@ -320,7 +320,8 @@ case "$1" in
                                                         WARN "swapFC: problem with create new swapfile"
                                                         continue
                                                 fi
-                                                mkswap "$swapfile"
+                                                mkswap -L SWAP_${FSTYPE}_${allocated} "$swapfile" | sed ':a;N;$!ba;s/)\n/), /g'
+                                                echo
                                                 if YN $swapfc_force_preallocated; then
                                                         UNIT_NAME=$(gen_swap_unit What="$swapfile" Tag="swapfc_$allocated")
                                                 else
