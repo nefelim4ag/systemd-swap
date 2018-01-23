@@ -225,8 +225,7 @@ case "$1" in
                         swapfc_nocow=${swapfc_nocow:-"1"}
                         swapfc_directio=${swapfc_directio:-"1"}
                         swapfc_force_preallocated=${swapfc_force_preallocated:-"0"}
-                        max_count=$swapfc_max_count
-                        free_swap_perc=${swapfc_free_swap_perc:-"15"}
+                        swapfc_free_swap_perc=${swapfc_free_swap_perc:-"15"}
                         get_free_swap_perc(){
                                 # +1 prevent devide by zero
                                 total="$(grep SwapTotal: /proc/meminfo | grep -o -e '[0-9]*')"
@@ -309,11 +308,13 @@ case "$1" in
                         touch    "$WORK_DIR/swapfc/.lock"
                         {
                                 allocated=0
+                                free_threshold_up=$swapfc_free_swap_perc
+                                free_threshold_down=$((swapfc_free_swap_perc+40))
                                 while [ -f $WORK_DIR/swapfc/.lock ] && sleep $swapfc_frequency; do
                                         curr_free_swap_perc=$(get_free_swap_perc)
-                                        if (( $curr_free_swap_perc < $free_swap_perc )) && (( allocated < max_count )); then
+                                        if (( $curr_free_swap_perc < $free_threshold_up )) && (( allocated < swapfc_max_count )); then
                                                 allocated=$((allocated+1))
-                                                INFO "swapFC: free swap: $curr_free_swap_perc < $free_swap_perc - allocate chunk: $allocated"
+                                                INFO "swapFC: free swap: $curr_free_swap_perc < $free_threshold_up - allocate chunk: $allocated"
                                                 swapfile=$(prepare_swapfile "$chunk_size" "$swapfc_path/$allocated")
                                                 if [ -z "$swapfile" ]; then
                                                         allocated=$((allocated-1))
@@ -332,8 +333,8 @@ case "$1" in
                                                         losetup -d "$swapfile"
                                                 fi
                                         fi
-                                        if (( $(get_free_swap_perc) > $((free_swap_perc+40)) )) && (( allocated > 2 )); then
-                                                INFO "swapFC: free swap: $curr_free_swap_perc > $((free_swap_perc+40)) - freeup chunk: $allocated"
+                                        if (( $(get_free_swap_perc) > free_threshold_down )) && (( allocated > 2 )); then
+                                                INFO "swapFC: free swap: $curr_free_swap_perc > $free_threshold_down - freeup chunk: $allocated"
                                                 FIND_SWAP_UNITS | while read -r UNIT_PATH; do
                                                         if grep -q swapfc_$allocated $UNIT_PATH; then
                                                                 DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
