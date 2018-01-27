@@ -34,14 +34,17 @@ $ sudo make install
 
 ## About configuration
 ```
-Q: What's the difference between Swap File Universal and Swap File Chunked?
-A: SFU must work on any backend (btrfs, ntfs & etc), SFC works only on backend which support swapon for swap files (ext4, xfs & etc).
+Q: WTF?! Why you merge swapFC and swapFU?
+A: That simplify testing of swapFC code and make code more generic
+
+Q: How can i migrate config swapFU from 3.X to 4.X?
+A: Most of switches are same, to get configuration like swapFU from swapFC, set swapfc_max_count to 1 and swapfc_chunk_size to size of swapFU.
 
 Q: Do we need to activate both zram and zswap?
 A: Nope, it's useless, as zram is a compressed RAM DISK, but zswap is a compressed "writeback" CACHE on swap file/disk.
 
-Q: Do we need both swapfu and swapfc?
-A: Nope, as you wish really, in most cases swapfc must work faster and it's more safe in OOM condition in comparison to swapfu.
+Q: Do i need use swapfc_force_use_loop on swapFC?
+A: Nope, as you wish really, native swapfile must work faster and it's more safe in OOM condition in comparison to loop backed scenario.
 
 Q: When would we want a certain configuration?
 A: In most cases (Notebook, Desktop, Server) it's enough to enable zswap + swapfc (On server tuning of swapfc can be needed).
