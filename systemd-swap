@@ -341,13 +341,9 @@ case "$1" in
                                                                 UNIT_NAME=$(basename $UNIT_PATH)
                                                                 systemctl stop "$UNIT_NAME" || swapoff "$DEV"
                                                                 rm -f "$UNIT_NAME"
-                                                                if [ -f $DEV ]; then
-                                                                        rm -f $DEV
-                                                                fi
+                                                                [ -f $DEV ] && rm -f $DEV
                                                         fi
                                                 done
-                                                swapoff "$WORK_DIR/swapfc/$allocated" && \
-                                                    rm -f "$swapfc_path/$allocated" "$WORK_DIR/swapfc/$allocated"
                                                 allocated=$((allocated-1))
                                         fi
                                 done
