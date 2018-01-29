@@ -99,10 +99,10 @@ gen_swap_unit(){
                 [ -z "$Options"  ] || echo "Options=$Options"
         } > "$UNIT_PATH"
 
+        ln -srf "$UNIT_PATH" $RUN_SYSD/system/swap.target.wants/
+
         if [[ "$Type" == "File" ]]; then
                 ln -srf "$UNIT_PATH" $RUN_SYSD/system/local-fs.target.wants/
-        else
-                ln -srf "$UNIT_PATH" $RUN_SYSD/system/swap.target.wants/
         fi
 
         echo "${UNIT_NAME}.swap"
