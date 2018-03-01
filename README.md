@@ -8,7 +8,7 @@ Script for manage swap on:
 It is configurable in /etc/systemd/swap.conf.
 
 Additional terms:
-* SwapFC - provide a dynamic swap file allocation/deallocation
+* SwapFC (File Chunked) - provide a dynamic swap file allocation/deallocation
 
 ## Files placed:
 ```
