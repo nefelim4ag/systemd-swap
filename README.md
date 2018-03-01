@@ -1,7 +1,7 @@
 ## systemd-swap
 Script for manage swap on:
-* zswap - Enable/Configure
-* zram - Autoconfigurating
+* [zswap](https://www.kernel.org/doc/Documentation/vm/zswap.txt) - Enable/Configure
+* [zram](https://www.kernel.org/doc/Documentation/blockdev/zram.txt) - Autoconfigurating for swap
 * files - (sparse files for saving space, support btrfs)
 * block devices - auto find and do swapon
 
