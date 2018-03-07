@@ -95,6 +95,7 @@ gen_swap_unit(){
                 echo
                 echo '[Swap]'
                 echo "What=$What"
+                echo "TimeoutSec=1h"
                 [ -z "$Priority" ] || echo "Priority=$Priority"
                 [ -z "$Options"  ] || echo "Options=$Options"
         } > "$UNIT_PATH"
