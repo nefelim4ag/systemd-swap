@@ -266,7 +266,9 @@ case "$1" in
                                 YN $swapfc_nocow && chattr +C "$file"
 
                                 if YN $swapfc_force_preallocated; then
-                                        fallocate -l "$chunk_size" "$file"
+                                        # ext2/3 not support fallocate
+                                        fallocate -l "$chunk_size" "$file" \
+                                        || truncate -s "$chunk_size" "$file"
                                 else
                                         truncate -s "$chunk_size" "$file"
                                 fi
