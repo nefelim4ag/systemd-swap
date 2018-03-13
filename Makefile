@@ -26,7 +26,7 @@ $(SVC_T): systemd-swap.service
 	install -Dm644 $< $@
 
 $(CNF_T): swap.conf
-	install -bDm644 -S $< $@
+	install -bDm644 -S .old $< $@
 
 files: $(BIN_T) $(SVC_T) $(CNF_T)
 
