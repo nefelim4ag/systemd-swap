@@ -209,11 +209,15 @@ case "$1" in
                                         ;;
                                 esac
                         done
-                        INFO "Zram: initialized: $zram_dev"
-                        mkswap "$zram_dev" &> /dev/null && \
-                        UNIT_NAME=$(gen_swap_unit What="$zram_dev" Options=discard Priority=$zram_prio Tag=zram)
-                        systemctl daemon-reload
-                        systemctl start $UNIT_NAME
+                        if [ -b "$zram_dev" ]; then
+                            INFO "Zram: initialized: $zram_dev"
+                            mkswap "$zram_dev" &> /dev/null && \
+                            UNIT_NAME=$(gen_swap_unit What="$zram_dev" Options=discard Priority=$zram_prio Tag=zram)
+                            systemctl daemon-reload
+                            systemctl start $UNIT_NAME
+                        else
+                            WARN "Can't get free Zram device"
+                        fi
                 fi
 
                 swapfc_enabled=${swapfc_enabled:-0}
