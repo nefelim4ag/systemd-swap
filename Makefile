@@ -1,4 +1,5 @@
 PREFIX ?= /
+FEDORA_VERSION ?= f28
 
 default:  help
 
@@ -45,6 +46,10 @@ uninstall:
 deb: ## Create debian package
 deb: package.sh
 	$< debian
+
+rpm: ## Create fedora package
+rpm: package.sh
+	./$< fedora $(FEDORA_VERSION)
 
 help: ## Show help
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##/\t/'
