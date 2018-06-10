@@ -29,6 +29,12 @@ $ git clone https://github.com/Nefelim4ag/systemd-swap.git
 $ ./systemd-swap/package.sh debian
 $ sudo dpkg -i ././systemd-swap/systemd-swap-*any.deb
 ```
+* Fedora: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh) $
+```
+$ git clone https://github.com/Nefelim4ag/systemd-swap.git
+$ ./systemd-swap/package.sh fedora f28
+$ sudo dnf install ./systemd-swap/systemd-swap-*noarch.rpm
+```
 * Manual
 ```
 $ git clone https://github.com/Nefelim4ag/systemd-swap.git

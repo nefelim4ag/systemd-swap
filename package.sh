@@ -33,8 +33,21 @@ archlinux_package(){
     INFO "Use pacman -S systemd-swap"
 }
 
+fedora_package(){
+    cd "$(dirname $0)"
+    FEDORA_VERSION=$1
+    VERSION=$(git tag | tail -n 1)
+    [ -z "$VERSION" ] && ERRO "Can't get git tag, VERSION are empty!"
+    [ -z "$FEDORA_VERSION" ] && ERRO "Please specify fedora version e.g.: $0 fedora f28"
+    fedpkg --release $FEDORA_VERSION local
+    mv noarch/*.rpm ./
+    rmdir noarch
+    rm *.src.rpm
+}
+
 case $1 in
     debian) debian_package ;;
-    archlinux) ;;
-    *) echo "$0 <debian|archlinux>" ;;
+    archlinux) archlinux_package ;;
+    fedora) fedora_package $2 ;;
+    *) echo "$0 <debian|archlinux|fedora [version]>" ;;
 esac
