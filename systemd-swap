@@ -128,13 +128,20 @@ case "$1" in
                 # shellcheck source=/run/systemd/swap/swap.conf
                 . $CONFIG || ERRO "Problems while load of $CONFIG"
 
-                if [ -d $ETC_SYSD/swap.conf.d ]; then
-                        for L_CONF in  $ETC_SYSD/swap.conf.d/*; do
-                                [ ! -f "$L_CONF" ] && continue
-                                # shellcheck source=/run/systemd/swap/swap.conf
-                                . $L_CONF || ERRO "Problems while load of $L_CONF"
-                        done
-                fi
+                declare -A CONFS
+                for L_CONF in {/lib,/run,/etc}/systemd/swap.conf.d/*.conf; do
+                        [[ ! -r $L_CONF ]] && continue
+                        BASE=$(basename "$L_CONF")
+                        [[ ${CONFS[$BASE]} ]] && BASES=("${BASES[@]/$BASE}")
+                        CONFS["$BASE"]=$L_CONF
+                        BASES+=("$BASE")
+                done
+                for BASE in "${BASES[@]}"; do
+                        [[ ! $BASE ]] && continue
+                        L_CONF=${CONFS[$BASE]}
+                        # shellcheck source=/run/systemd/swap/swap.conf
+                        . "$L_CONF" || ERRO "Problems while load of $L_CONF"
+                done
 
                 zswap_enabled=${zswap_enabled:-0}
                 if YN $zswap_enabled; then
