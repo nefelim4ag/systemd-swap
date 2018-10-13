@@ -45,7 +45,7 @@ uninstall:
 
 deb: ## Create debian package
 deb: package.sh
-	$< debian
+	./$< debian
 
 rpm: ## Create fedora package
 rpm: package.sh
