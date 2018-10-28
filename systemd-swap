@@ -170,6 +170,7 @@ case "$1" in
                 zram_enabled=${zram_enabled:-0}
                 if YN $zram_enabled; then
                         [ -z "$zram_size" ] && zram_size=$((RAM_SIZE/4))
+			zram_size=$((zram_size/$NCPU))
                         zram_streams=${zram_streams:-$NCPU}
                         zram_alg=${zram_alg:-"lz4"}
                         zram_prio=${zram_prio:-"32767"}
@@ -190,7 +191,7 @@ case "$1" in
                                 INFO "Zram: module already loaded"
                         fi
 
-                        for (( i = 0; i < 10; i++ )); do
+                        for (( i = 0; i < $NCPU; i++ )); do
                                 INFO "Zram: trying to initialize free device"
                                 # zramctl is a external program -> return name of first free device
                                 TMP=$(mktemp)
@@ -212,10 +213,8 @@ case "$1" in
                                         /dev/zram*)
                                                 [ -b "$OUTPUT" ] || continue
                                                 zram_dev="$OUTPUT"
-                                                break
                                         ;;
                                 esac
-                        done
                         if [ -b "$zram_dev" ]; then
                             INFO "Zram: initialized: $zram_dev"
                             mkswap "$zram_dev" &> /dev/null && \
@@ -225,6 +224,7 @@ case "$1" in
                         else
                             WARN "Can't get free Zram device"
                         fi
+			done
                 fi
 
                 swapfc_enabled=${swapfc_enabled:-0}
