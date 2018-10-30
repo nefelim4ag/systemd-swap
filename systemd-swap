@@ -477,20 +477,28 @@ case "$1" in
 
                 if zramctl | grep -q '\[SWAP\]'; then
                         echo ZRam:
-                        zramctl  | \
+                        zramctl | \
                                 grep -e '^NAME\|\[SWAP\]' | \
                                 sed 's/^/. /g' | \
                                 column -t \
-                                        --table-columns \.,NAME,ALGORITHM,DISKSIZE,DATA,COMPR,TOTAL,STREAMS,MOUNTPOINT \
-                                        -H MOUNTPOINT | \
-                                        uniq
+                                       -c \.,NAME,ALGORITHM,DISKSIZE,DATA,COMPR,TOTAL,STREAMS,MOUNTPOINT |\
+                                       uniq
                 fi
 
-                if [ -d /run/systemd/swap/swapfc ]; then
-                        {
-                                echo SwapFC:
-                                swapon --show TYPE | grep -e 'NAME\|file\|loop' | sed 's/^/. /g'
-                        } | column -t
+                if [ -d /run/systemd/swap/swapd ]; then
+                        echo swapD:
+                        swapon --raw --show TYPE | \
+                                grep -v 'zram\|file\|loop' | \
+                                sed 's/^/. /g' | \
+                                column -t
+                fi
+
+            if [ -d /run/systemd/swap/swapfc ]; then
+                        echo swapFC:
+                        swapon --raw --show TYPE | \
+                                grep -e 'NAME\|file\|loop' | \
+                                sed 's/^/. /g' | \
+                                column -t
                 fi
         ;;
         *) help ;;
