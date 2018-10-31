@@ -37,7 +37,7 @@ install: dirs files
 
 uninstall: ## Delete systemd-swap (stop systemd-swap first)
 uninstall:
-	test ! -f /run/systemd/swap/swap.conf
+	test ! -f /run/systemd/swap/.started
 	@rm -v $(BIN_T)
 	@rm -v $(SVC_T)
 	@rm -v $(CNF_T)

@@ -170,7 +170,7 @@ case "$1" in
                 zram_enabled=${zram_enabled:-0}
                 if YN $zram_enabled; then
                         [ -z "$zram_size" ] && zram_size=$((RAM_SIZE/4))
-			zram_size=$((zram_size/$NCPU))
+                        zram_size=$((zram_size/$NCPU))
                         zram_streams=${zram_streams:-$NCPU}
                         zram_alg=${zram_alg:-"lz4"}
                         zram_prio=${zram_prio:-"32767"}
@@ -215,16 +215,16 @@ case "$1" in
                                                 zram_dev="$OUTPUT"
                                         ;;
                                 esac
-                        if [ -b "$zram_dev" ]; then
-                            INFO "Zram: initialized: $zram_dev"
-                            mkswap "$zram_dev" &> /dev/null && \
-                            UNIT_NAME=$(gen_swap_unit What="$zram_dev" Options=discard Priority=$zram_prio Tag=zram)
-                            systemctl daemon-reload
-                            systemctl start $UNIT_NAME
-                        else
-                            WARN "Can't get free Zram device"
-                        fi
-			done
+                                if [ -b "$zram_dev" ]; then
+                                        INFO "Zram: initialized: $zram_dev"
+                                        mkswap "$zram_dev" &> /dev/null && \
+                                        UNIT_NAME=$(gen_swap_unit What="$zram_dev" Options=discard Priority=$zram_prio Tag=zram)
+                                        systemctl daemon-reload
+                                        systemctl start $UNIT_NAME
+                                else
+                                        WARN "Can't get free Zram device"
+                                fi
+                        done
                 fi
 
                 swapfc_enabled=${swapfc_enabled:-0}
