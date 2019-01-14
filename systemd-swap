@@ -170,10 +170,14 @@ case "$1" in
                 zram_enabled=${zram_enabled:-0}
                 if YN $zram_enabled; then
                         [ -z "$zram_size" ] && zram_size=$((RAM_SIZE/4))
-                        zram_streams=${zram_streams:-$NCPU}
+                        zram_rstreams=${zram_rstreams:-1}
+                        zram_streams=$((${zram_streams:-$NCPU}/$zram_rstreams))
                         zram_alg=${zram_alg:-"lz4"}
                         zram_prio=${zram_prio:-"32767"}
                         zram_dev=""
+
+                        zram_wstreams=$(($zram_streams>0?$zram_streams:1))
+                        zram_size=$(($zram_size/$zram_rstreams))
 
                         INFO "Zram: check availability"
                         if [ ! -d /sys/module/zram ]; then
@@ -190,41 +194,55 @@ case "$1" in
                                 INFO "Zram: module already loaded"
                         fi
 
-                        for (( i = 0; i < 10; i++ )); do
-                                INFO "Zram: trying to initialize free device"
-                                # zramctl is a external program -> return name of first free device
-                                TMP=$(mktemp)
-                                zramctl -f -a $zram_alg -t $zram_streams -s $zram_size &> $TMP
-                                read -r OUTPUT < $TMP
-                                rm -f $TMP
-                                case "$OUTPUT" in
-                                        *"failed to reset: Device or resource busy"*)
-                                                sleep 1
-                                        ;;
-                                        *"zramctl: no free zram device found"*)
-                                                WARN "Zram: zramctl can't find free device"
-                                                INFO "Zram: using workaround hook for hot add"
-                                                [ ! -f /sys/class/zram-control/hot_add ] && \
-                                                        ERRO "Zram: this kernel does not support hot add zram device, please use 4.2+ kernels or see modinfo zram and make a modprobe rule"
-                                                read -r NEW_ZRAM < /sys/class/zram-control/hot_add
-                                                INFO "Zram: success: new device /dev/zram$NEW_ZRAM"
-                                        ;;
-                                        /dev/zram*)
-                                                [ -b "$OUTPUT" ] || continue
-                                                zram_dev="$OUTPUT"
-                                                break
-                                        ;;
-                                esac
-                        done
-                        if [ -b "$zram_dev" ]; then
-                            INFO "Zram: initialized: $zram_dev"
-                            mkswap "$zram_dev" &> /dev/null && \
-                            UNIT_NAME=$(gen_swap_unit What="$zram_dev" Options=discard Priority=$zram_prio Tag=zram)
-                            systemctl daemon-reload
-                            systemctl start $UNIT_NAME
-                        else
-                            WARN "Can't get free Zram device"
-                        fi
+gen_zram_device(){
+
+  INFO "Zram: trying to initialize free device"
+  for (( i = 0; i < 10; i++ )); do
+          # zramctl is a external program -> return name of first free device
+          TMP=$(mktemp)
+          zramctl -f -a $zram_alg -t $zram_wstreams -s $zram_size &> $TMP
+          read -r OUTPUT < $TMP
+          rm -f $TMP
+          case "$OUTPUT" in
+                  *"failed to reset: Device or resource busy"*)
+                          sleep 1
+                  ;;
+                  *"zramctl: no free zram device found"*)
+                          WARN "Zram: zramctl can't find free device"
+                          INFO "Zram: using workaround hook for hot add"
+                          [ ! -f /sys/class/zram-control/hot_add ] && \
+                                  ERRO "Zram: this kernel does not support hot add zram device, please use 4.2+ kernels or see modinfo zram and make a modprobe rule"
+                          read -r NEW_ZRAM < /sys/class/zram-control/hot_add
+                          INFO "Zram: success: new device /dev/zram$NEW_ZRAM"
+                  ;;
+                  /dev/zram*)
+                          [ -b "$OUTPUT" ] || continue
+                          zram_dev="$OUTPUT"
+                          break
+                  ;;
+          esac
+  done
+
+  if [ -b "$zram_dev" ]; then
+    return;
+  else
+    ERRO "Zram: failed to init device"
+  fi
+}
+
+                        for ((dev = 0; dev < zram_rstreams; dev++)); do
+                              gen_zram_device
+
+                              if [ -b "$zram_dev" ]; then
+                                    INFO "Zram: initialized: $zram_dev"
+                                    mkswap "$zram_dev" &> /dev/null && \
+                                    UNIT_NAME=$(gen_swap_unit What="$zram_dev" Options=discard Priority=$zram_prio Tag=zram)
+                                    systemctl daemon-reload
+                                    systemctl start $UNIT_NAME
+                                else
+                                    WARN "Can't get free Zram device"
+                              fi
+                        done;
                 fi
 
                 swapfc_enabled=${swapfc_enabled:-0}
@@ -424,7 +442,13 @@ case "$1" in
                                 DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
                                 UNIT_NAME=$(basename $UNIT_PATH)
                                 INFO "Zram: swapoff $DEV"
-                                swapoff "$DEV"
+                                swapoff "$DEV" &
+                        fi
+                        wait
+                        if grep -q zram $UNIT_PATH; then
+                                DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
+                                UNIT_NAME=$(basename $UNIT_PATH)
+                                INFO "Zram: rm device $DEV"
                                 rm -f $UNIT_PATH
                                 zramctl -r "$DEV"
                         fi
