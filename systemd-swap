@@ -110,6 +110,48 @@ gen_swap_unit(){
 }
 
 ################################################################################
+# zram device generator
+gen_zram_device(){
+        export Algo WStreams Size
+        for i in "$@"; do
+            case $i in
+                Algo=*)     Algo="${i//Algo=/}" ;;
+                WStreams=*) WStreams="${i//WStreams=/}" ;;
+                Size=*)  Size="${i//Size=/}"   ;;
+            esac
+        done
+
+
+        for (( i = 0; i < 10; i++ )); do
+                # zramctl is a external program -> return name of first free device
+                TMP=$(mktemp)
+                zramctl -f -a $Algo -t $WStreams -s $Size &> $TMP
+                read -r OUTPUT < $TMP
+                rm -f $TMP
+                case "$OUTPUT" in
+                        *"failed to reset: Device or resource busy"*)
+                                sleep 1
+                        ;;
+                        *"zramctl: no free zram device found"*)
+                                # WARN "Zram: zramctl can't find free device"
+                                # INFO "Zram: using workaround hook for hot add"
+                                [ ! -f /sys/class/zram-control/hot_add ] && \
+                                        ERRO "Zram: this kernel does not support hot add zram device, please use 4.2+ kernels or see modinfo zram and make a modprobe rule"
+                                read -r NEW_ZRAM < /sys/class/zram-control/hot_add
+                                # INFO "Zram: success: new device /dev/zram$NEW_ZRAM"
+                        ;;
+                        /dev/zram*)
+                                [ -b "$OUTPUT" ] || continue
+                                zram_dev="$OUTPUT"
+                                break
+                        ;;
+                esac
+        done
+
+        echo $zram_dev
+}
+
+################################################################################
 # INIT
 ################################################################################
 
@@ -194,44 +236,12 @@ case "$1" in
                                 INFO "Zram: module already loaded"
                         fi
 
-gen_zram_device(){
 
-  INFO "Zram: trying to initialize free device"
-  for (( i = 0; i < 10; i++ )); do
-          # zramctl is a external program -> return name of first free device
-          TMP=$(mktemp)
-          zramctl -f -a $zram_alg -t $zram_wstreams -s $zram_size &> $TMP
-          read -r OUTPUT < $TMP
-          rm -f $TMP
-          case "$OUTPUT" in
-                  *"failed to reset: Device or resource busy"*)
-                          sleep 1
-                  ;;
-                  *"zramctl: no free zram device found"*)
-                          WARN "Zram: zramctl can't find free device"
-                          INFO "Zram: using workaround hook for hot add"
-                          [ ! -f /sys/class/zram-control/hot_add ] && \
-                                  ERRO "Zram: this kernel does not support hot add zram device, please use 4.2+ kernels or see modinfo zram and make a modprobe rule"
-                          read -r NEW_ZRAM < /sys/class/zram-control/hot_add
-                          INFO "Zram: success: new device /dev/zram$NEW_ZRAM"
-                  ;;
-                  /dev/zram*)
-                          [ -b "$OUTPUT" ] || continue
-                          zram_dev="$OUTPUT"
-                          break
-                  ;;
-          esac
-  done
-
-  if [ -b "$zram_dev" ]; then
-    return;
-  else
-    ERRO "Zram: failed to init device"
-  fi
-}
 
                         for ((dev = 0; dev < zram_rstreams; dev++)); do
-                              gen_zram_device
+
+                              INFO "Zram: trying to initialize free device"
+                              zram_dev=$(gen_zram_device Algo="$zram_alg" WStreams="$zram_wstreams" Size="$zram_size")
 
                               if [ -b "$zram_dev" ]; then
                                     INFO "Zram: initialized: $zram_dev"
@@ -444,7 +454,11 @@ gen_zram_device(){
                                 INFO "Zram: swapoff $DEV"
                                 swapoff "$DEV" &
                         fi
-                        wait
+                done
+
+                wait
+
+                FIND_SWAP_UNITS | while read -r UNIT_PATH; do
                         if grep -q zram $UNIT_PATH; then
                                 DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
                                 UNIT_NAME=$(basename $UNIT_PATH)
