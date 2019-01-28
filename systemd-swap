@@ -249,6 +249,9 @@ case "$1" in
 
                         to_bytes(){ numfmt --to=none --from=iec "$1"; }
 
+                        # Must exists before stat()
+                        mkdir -p "$swapfc_path"
+
                         chunk_size=$(to_bytes $chunk_size)
                         BLOCK_SIZE=$(stat -f -c %s "$swapfc_path")
                         FSTYPE="$(get_fs_type $swapfc_path)"
