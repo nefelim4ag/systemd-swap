@@ -90,17 +90,6 @@ echo vm.vfs_cache_pressure=50 | sudo tee -a /etc/sysctl.d/99-sysctl.conf
 sudo sysctl -p /etc/sysctl.d/99-sysctl.conf
 ```
 
-* Need to remove swap on fstab :
-
-```
-nano /etc/fstab
-```
-
-* Stop your swap :
-
-```
-swapoff -a
-```
 
 * If you have install Systemd Swap check configuration :
 
@@ -114,6 +103,17 @@ zswap_enabled=1
 swapfc_enabled=1
 ```
 
+* Stop your swap :
+
+```
+swapoff -a
+```
+
+* Need to remove swap on fstab :
+
+```
+nano /etc/fstab
+```
 
 * Remove your swap :
 
