@@ -82,7 +82,7 @@ cat /proc/sys/vm/swappiness
 cat /proc/sys/vm/vfs_cache_pressure
 ```
 
-* Recomended configuration :
+* Recomended configuration for Desktop :
 
 ```
 echo vm.swappiness=5 | sudo tee -a /etc/sysctl.d/99-sysctl.conf
