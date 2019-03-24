@@ -71,3 +71,85 @@ A: Nope as hibernation wants a persistent fs blocks and wants access to swap dat
 ```
 options zram max_devices=32
 ```
+
+## Switch On Systemd Swap :
+
+
+* For check your configuration :
+
+```
+cat /proc/sys/vm/swappiness
+cat /proc/sys/vm/vfs_cache_pressure
+```
+
+* Recomended configuration :
+
+```
+echo vm.swappiness=5 | sudo tee -a /etc/sysctl.d/99-sysctl.conf
+echo vm.vfs_cache_pressure=50 | sudo tee -a /etc/sysctl.d/99-sysctl.conf
+sudo sysctl -p /etc/sysctl.d/99-sysctl.conf
+```
+
+* Need to remove swap on fstab :
+
+```
+nano /etc/fstab
+```
+
+* Stop your swap :
+
+```
+swapoff -a
+```
+
+* If you have install Systemd Swap check configuration :
+
+```
+nano /etc/systemd/swap.conf
+```
+
+```
+zram_enabled=0
+zswap_enabled=1
+swapfc_enabled=1
+```
+
+
+* Remove your swap :
+
+```
+# For Ubuntu 18.04
+sudo rm -f /swapfile
+
+# For Centos 7
+lvremove -Ay /dev/centos/swap
+lvextend -l +100%FREE centos/root
+```
+
+* Remove Swap from Grub
+
+```
+# For Ubuntu remove resume* in grub
+nano /etc/default/grub
+
+# For Centos 7 remove rd.lvm.lv=centos/swap*
+nano /etc/default/grub
+
+# For Manjaro remove resume* in grub & mkinitcpio
+nano /etc/default/grub
+nano /etc/mkinitcpio.conf
+```
+
+* Remove Swap from Grub
+
+```
+# For Ubuntu
+update-grub
+
+# For Centos 7
+update-grub
+
+# For Manjaro
+update-grub
+mkinitcpio -P
+```
