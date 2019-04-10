@@ -62,6 +62,9 @@ readonly LOCK_STARTED="$WORK_DIR/.started"
 readonly ZSWAP_M="/sys/module/zswap"
 readonly ZSWAP_M_P="/sys/module/zswap/parameters"
 
+readonly KMAJOR=$(uname -r | cut -d'.' -f1)
+readonly KMINOR=$(uname -r | cut -d'.' -f2)
+
 ################################################################################
 # swap unit generator
 gen_swap_unit(){
