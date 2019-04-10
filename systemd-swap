@@ -37,7 +37,7 @@ read_l(){
         echo $DATA | base64 -d
 }
 
-get_fs_type(){ stat -fc "%T" "$1"; }
+get_fs_type(){ df "$1" --output=fstype | tail -n 1; }
 AMI_ROOT(){ [ "$UID" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/ -type f -name "*.swap"; }
 GET_WHAT_FROM_SWAP_UNIT(){ grep What $1 | cut -d'=' -f2; }
