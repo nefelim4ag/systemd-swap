@@ -33,14 +33,14 @@ write_l(){
 read_l(){
         [ -z "$1" ] && return
         FILE="$1"
-        DATA=$(basename "$(realpath $FILE)" )
-        echo $DATA | base64 -d
+        DATA=$(basename "$(realpath "$FILE")" )
+        echo "$DATA" | base64 -d
 }
 
 get_fs_type(){ stat -fc "%T" "$1"; }
 AMI_ROOT(){ [ "$UID" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/ -type f -name "*.swap"; }
-GET_WHAT_FROM_SWAP_UNIT(){ grep What $1 | cut -d'=' -f2; }
+GET_WHAT_FROM_SWAP_UNIT(){ grep What "$1" | cut -d'=' -f2; }
 help(){
     echo "$0 start|stop|status"
     echo "   start  - init daemon"
@@ -76,14 +76,14 @@ gen_swap_unit(){
         done
         [ ! -z "$What" ] || return 1
 
-        What="$(realpath $What)"
+        What="$(realpath "$What")"
         Type="File" # Assume that a file by default
         if [ -b "$What" ]; then
                 Type="Block/Partition"
                 [[ "$What" =~ loop ]] && Type="File"
         fi
 
-        UNIT_NAME="$(systemd-escape -p $What)"
+        UNIT_NAME="$(systemd-escape -p "$What")"
         UNIT_PATH="$RUN_SYSD/system/$UNIT_NAME.swap"
         {
                 echo '[Unit]'
@@ -144,7 +144,7 @@ case "$1" in
                 done
 
                 zswap_enabled=${zswap_enabled:-0}
-                if YN $zswap_enabled; then
+                if YN "$zswap_enabled"; then
                         [ ! -d $ZSWAP_M ] && ERRO "Zswap - not supported on current kernel"
 
                         zswap_compressor=${zswap_compressor:-lz4}
@@ -154,21 +154,21 @@ case "$1" in
                         INFO "Zswap: backup current configuration: start"
                         mkdir -p $WORK_DIR/zswap/
                         for file in $ZSWAP_M_P/*; do
-                                read -r VAL < $file
-                                write_l "$VAL" "$WORK_DIR/zswap/$(basename $file)"
+                                read -r VAL < "$file"
+                                write_l "$VAL" "$WORK_DIR/zswap/$(basename "$file")"
                         done
                         INFO "Zswap: backup current configuration: complete"
                         INFO "Zswap: set new parameters: start"
                         INFO "Zswap: Enable: $zswap_enabled, Comp: $zswap_compressor,  Max pool %: $zswap_max_pool_percent, Zpool: $zswap_zpool"
-                        write ${zswap_enabled}          $ZSWAP_M_P/enabled
-                        write ${zswap_compressor}       $ZSWAP_M_P/compressor
-                        write ${zswap_max_pool_percent} $ZSWAP_M_P/max_pool_percent
-                        write ${zswap_zpool}            $ZSWAP_M_P/zpool
+                        write "${zswap_enabled}"          $ZSWAP_M_P/enabled
+                        write "${zswap_compressor}"       $ZSWAP_M_P/compressor
+                        write "${zswap_max_pool_percent}" $ZSWAP_M_P/max_pool_percent
+                        write "${zswap_zpool}"            $ZSWAP_M_P/zpool
                         INFO "Zswap: set new parameters: complete"
                 fi
 
                 zram_enabled=${zram_enabled:-0}
-                if YN $zram_enabled; then
+                if YN "$zram_enabled"; then
                         [ -z "$zram_size" ] && zram_size=$((RAM_SIZE/4))
                         zram_streams=${zram_streams:-$NCPU}
                         zram_alg=${zram_alg:-"lz4"}
@@ -194,9 +194,9 @@ case "$1" in
                                 INFO "Zram: trying to initialize free device"
                                 # zramctl is a external program -> return name of first free device
                                 TMP=$(mktemp)
-                                zramctl -f -a $zram_alg -t $zram_streams -s $zram_size &> $TMP
-                                read -r OUTPUT < $TMP
-                                rm -f $TMP
+                                zramctl -f -a "$zram_alg" -t "$zram_streams" -s $zram_size &> "$TMP"
+                                read -r OUTPUT < "$TMP"
+                                rm -f "$TMP"
                                 case "$OUTPUT" in
                                         *"failed to reset: Device or resource busy"*)
                                                 sleep 1
@@ -219,16 +219,16 @@ case "$1" in
                         if [ -b "$zram_dev" ]; then
                             INFO "Zram: initialized: $zram_dev"
                             mkswap "$zram_dev" &> /dev/null && \
-                            UNIT_NAME=$(gen_swap_unit What="$zram_dev" Options=discard Priority=$zram_prio Tag=zram)
+                            UNIT_NAME=$(gen_swap_unit What="$zram_dev" Options=discard Priority="$zram_prio" Tag=zram)
                             systemctl daemon-reload
-                            systemctl start $UNIT_NAME
+                            systemctl start "$UNIT_NAME"
                         else
                             WARN "Can't get free Zram device"
                         fi
                 fi
 
                 swapfc_enabled=${swapfc_enabled:-0}
-                if YN $swapfc_enabled; then
+                if YN "$swapfc_enabled"; then
                         chunk_size=${swapfc_chunk_size:-"512M"}
                         swapfc_max_count=${swapfc_max_count:-"8"}
                         swapfc_path=${swapfc_path:-"/var/lib/systemd-swap/swapfc/"}
@@ -252,11 +252,11 @@ case "$1" in
                         # Must exists before stat()
                         mkdir -p "$swapfc_path"
 
-                        chunk_size=$(to_bytes $chunk_size)
+                        chunk_size=$(to_bytes "$chunk_size")
                         BLOCK_SIZE=$(stat -f -c %s "$swapfc_path")
-                        FSTYPE="$(get_fs_type $swapfc_path)"
+                        FSTYPE="$(get_fs_type "$swapfc_path")"
 
-                        YN $swapfc_force_use_loop && FSTYPE=btrfs
+                        YN "$swapfc_force_use_loop" && FSTYPE=btrfs
 
                         [ "$FSTYPE" != btrfs ] && swapfc_force_preallocated=1
 
@@ -277,7 +277,7 @@ case "$1" in
                                 touch "$file"
                                 chmod 0600 "$file"
 
-                                YN $swapfc_nocow && chattr +C "$file"
+                                YN "$swapfc_nocow" && chattr +C "$file"
 
                                 if YN $swapfc_force_preallocated; then
                                         # ext2/3 not support fallocate
@@ -289,7 +289,7 @@ case "$1" in
 
                                 losetup_w(){
                                         file="$1"
-                                        if YN $swapfc_directio; then
+                                        if YN "$swapfc_directio"; then
                                                 losetup -f --show --direct-io=on  "$file"
                                         else
                                                 losetup -f --show --direct-io=off "$file"
@@ -303,7 +303,7 @@ case "$1" in
                                 RET="$file"
                                 case "$FSTYPE" in
                                         ext2|ext3|ext4) ;;
-                                        btrfs) RET=$(losetup_w $file) ;;
+                                        btrfs) RET=$(losetup_w "$file") ;;
                                         *)
                                                 # -z rewrite file second time
                                                 # By default shred gen random
@@ -327,7 +327,7 @@ case "$1" in
                                 allocated=0
                                 free_threshold_up=$swapfc_free_swap_perc
                                 free_threshold_down=$((swapfc_free_swap_perc+40))
-                                while [ -f $WORK_DIR/swapfc/.lock ] && sleep $swapfc_frequency; do
+                                while [ -f $WORK_DIR/swapfc/.lock ] && sleep "$swapfc_frequency"; do
                                         curr_free_swap_perc=$(get_free_swap_perc)
                                         if (( curr_free_swap_perc < free_threshold_up )) && (( allocated < swapfc_max_count )); then
                                                 if check_ENOSPC "$swapfc_path"; then
@@ -344,7 +344,7 @@ case "$1" in
                                                         UNIT_NAME=$(gen_swap_unit What="$swapfile" Options=discard Tag="swapfc_$allocated")
                                                 fi
                                                 systemctl daemon-reload
-                                                systemctl start $UNIT_NAME
+                                                systemctl start "$UNIT_NAME"
                                                 if [ -b "$swapfile" ]; then
                                                         losetup -d "$swapfile"
                                                 fi
@@ -353,12 +353,12 @@ case "$1" in
                                         if (( curr_free_swap_perc > free_threshold_down )); then
                                                 INFO "swapFC: free swap: $curr_free_swap_perc > $free_threshold_down - freeup chunk: $allocated"
                                                 FIND_SWAP_UNITS | while read -r UNIT_PATH; do
-                                                        if grep -q swapfc_$allocated $UNIT_PATH; then
-                                                                DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
-                                                                UNIT_NAME=$(basename $UNIT_PATH)
+                                                        if grep -q swapfc_$allocated "$UNIT_PATH"; then
+                                                                DEV=$(GET_WHAT_FROM_SWAP_UNIT "$UNIT_PATH")
+                                                                UNIT_NAME=$(basename "$UNIT_PATH")
                                                                 systemctl stop "$UNIT_NAME" || swapoff "$DEV"
                                                                 rm -f "$UNIT_NAME"
-                                                                [ -f $DEV ] && rm -f $DEV
+                                                                [ -f "$DEV" ] && rm -f "$DEV"
                                                         fi
                                                 done
                                                 allocated=$((allocated-1))
@@ -369,12 +369,12 @@ case "$1" in
 
                 swapd_auto_swapon=${swapd_auto_swapon:-1}
                 swapd_prio=${swapd_prio:-1024}
-                if YN $swapd_auto_swapon; then
+                if YN "$swapd_auto_swapon"; then
                         INFO "swapD: pickup devices from systemd-gpt-auto-generator"
                         FIND_SWAP_UNITS | while read -r UNIT_PATH; do
-                                if grep -q systemd-gpt-auto-generator $UNIT_PATH; then
-                                        DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
-                                        UNIT_NAME=$(basename $UNIT_PATH)
+                                if grep -q systemd-gpt-auto-generator "$UNIT_PATH"; then
+                                        DEV=$(GET_WHAT_FROM_SWAP_UNIT "$UNIT_PATH")
+                                        UNIT_NAME=$(basename "$UNIT_PATH")
                                         swapoff "$DEV"
                                         rm -f "$UNIT_NAME"
                                 fi
@@ -389,7 +389,7 @@ case "$1" in
                                 [ ! -b "$device" ] && continue
                                 UNIT_NAME=$(gen_swap_unit What="$device" Options=discard Tag="swapd")
                                 systemctl daemon-reload
-                                systemctl start $UNIT_NAME || continue
+                                systemctl start "$UNIT_NAME" || continue
                                 INFO "swapD: enabled device: $device"
                                 swapd_prio=$((swapd_prio-1))
                         done
@@ -399,9 +399,9 @@ case "$1" in
                 [ ! -f $LOCK_STARTED ] && INFO_E "$0 already stopped"
 
                 FIND_SWAP_UNITS | while read -r UNIT_PATH; do
-                        if grep -q swapd $UNIT_PATH; then
-                                DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
-                                UNIT_NAME=$(basename $UNIT_PATH)
+                        if grep -q swapd "$UNIT_PATH"; then
+                                DEV=$(GET_WHAT_FROM_SWAP_UNIT "$UNIT_PATH")
+                                UNIT_NAME=$(basename "$UNIT_PATH")
                                 swapoff "$DEV"
                                 rm -f "$UNIT_NAME"
                         fi
@@ -413,22 +413,22 @@ case "$1" in
                 fi
 
                 FIND_SWAP_UNITS | while read -r UNIT_PATH; do
-                        if grep -q swapfc $UNIT_PATH; then
-                                DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
-                                UNIT_NAME=$(basename $UNIT_PATH)
+                        if grep -q swapfc "$UNIT_PATH"; then
+                                DEV=$(GET_WHAT_FROM_SWAP_UNIT "$UNIT_PATH")
+                                UNIT_NAME=$(basename "$UNIT_PATH")
                                 swapoff "$DEV"
                                 rm -f "$UNIT_NAME"
-                                [ -f $DEV ] && rm -f $DEV
+                                [ -f "$DEV" ] && rm -f "$DEV"
                         fi
                 done
 
                 FIND_SWAP_UNITS | while read -r UNIT_PATH; do
-                        if grep -q zram $UNIT_PATH; then
-                                DEV=$(GET_WHAT_FROM_SWAP_UNIT $UNIT_PATH)
-                                UNIT_NAME=$(basename $UNIT_PATH)
+                        if grep -q zram "$UNIT_PATH"; then
+                                DEV=$(GET_WHAT_FROM_SWAP_UNIT "$UNIT_PATH")
+                                UNIT_NAME=$(basename "$UNIT_PATH")
                                 INFO "Zram: swapoff $DEV"
                                 swapoff "$DEV"
-                                rm -f $UNIT_PATH
+                                rm -f "$UNIT_PATH"
                                 zramctl -r "$DEV"
                         fi
                 done
@@ -436,7 +436,7 @@ case "$1" in
                 if [ -d $WORK_DIR/zswap/ ]; then
                         INFO "Zswap: restore configuration: start"
                         for file in $WORK_DIR/zswap/*; do
-                                read_l "$file" > "$ZSWAP_M_P/$(basename $file)"
+                                read_l "$file" > "$ZSWAP_M_P/$(basename "$file")"
                         done
                         INFO "Zswap: restore configuration: complete"
                 fi
