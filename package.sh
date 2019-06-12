@@ -42,7 +42,7 @@ fedora_package(){
     fedpkg --release "$FEDORA_VERSION" local
     mv noarch/*.rpm ./
     rmdir noarch
-    rm *.src.rpm
+    rm ./*src.rpm
 }
 
 case $1 in
