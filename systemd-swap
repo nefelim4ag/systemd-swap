@@ -77,7 +77,7 @@ gen_swap_unit(){
                 Tag=*)      Tag="${i//Tag=}"          ;;
             esac
         done
-        [ -z "$What" ] || return 1
+        [ -n "$What" ] || return 1
 
         What="$(realpath "$What")"
         Type="File" # Assume that a file by default
