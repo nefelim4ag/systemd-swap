@@ -37,7 +37,7 @@ read_l(){
         echo $DATA | base64 -d
 }
 
-get_fs_type(){ stat -fc "%T" "$1"; }
+get_fs_type(){ df "$1" --output=fstype | tail -n 1; }
 AMI_ROOT(){ [ "$UID" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/ -type f -name "*.swap"; }
 GET_WHAT_FROM_SWAP_UNIT(){ grep What $1 | cut -d'=' -f2; }
@@ -61,6 +61,9 @@ readonly WORK_DIR=/run/systemd/swap
 readonly LOCK_STARTED="$WORK_DIR/.started"
 readonly ZSWAP_M="/sys/module/zswap"
 readonly ZSWAP_M_P="/sys/module/zswap/parameters"
+
+readonly KMAJOR=$(uname -r | cut -d'.' -f1)
+readonly KMINOR=$(uname -r | cut -d'.' -f2)
 
 ################################################################################
 # swap unit generator
@@ -248,6 +251,9 @@ case "$1" in
                         }
 
                         to_bytes(){ numfmt --to=none --from=iec "$1"; }
+
+                        # Must exists before stat()
+                        mkdir -p "$swapfc_path"
 
                         chunk_size=$(to_bytes $chunk_size)
                         BLOCK_SIZE=$(stat -f -c %s "$swapfc_path")
