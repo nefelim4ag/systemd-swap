@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euxo pipefail
+set -eo pipefail
 
 # echo wrappers
 INFO(){ echo "INFO: $*";}
@@ -50,13 +50,13 @@ help(){
 }
 
 # Global vars
-readonly RUN_SYSD=/run/systemd/
+readonly RUN_SYSD="/run/systemd"
 readonly NCPU=$(nproc)
 readonly RAM_SIZE=$(( $(grep MemTotal: /proc/meminfo | grep -o '[0-9]*') * 1024 ))
 readonly PAGE_SIZE=$(getconf PAGESIZE)
-readonly ETC_SYSD=/etc/systemd/
-readonly CONFIG="${ETC_SYSD}"/swap.conf
-readonly WORK_DIR=/run/systemd/swap
+readonly ETC_SYSD="/etc/systemd"
+readonly CONFIG="${ETC_SYSD}/swap.conf"
+readonly WORK_DIR="/run/systemd/swap"
 
 readonly LOCK_STARTED="${WORK_DIR}/.started"
 readonly ZSWAP_M="/sys/module/zswap"
@@ -110,10 +110,10 @@ gen_swap_unit(){
     [ -z "${Options}"  ] || echo "Options=${Options}"
   } > "${UNIT_PATH}"
 
-  ln -srf "${UNIT_PATH}" "${RUN_SYSD}/system/swap.target.wants/"
+  ln -srf "${UNIT_PATH}" "${RUN_SYSD}/system/swap.target.wants"
 
   if [[ "${Type}" == "File" ]]; then
-    ln -srf "${UNIT_PATH}" "${RUN_SYSD}/system/local-fs.target.wants/"
+    ln -srf "${UNIT_PATH}" "${RUN_SYSD}/system/local-fs.target.wants"
   fi
 
   echo "${UNIT_NAME}.swap"
@@ -130,8 +130,8 @@ mkdir -p \
 
 case "$1" in
   start)
-    [ -f ${LOCK_STARTED} ] && ERRO "$0 already started"
-    touch ${LOCK_STARTED}
+    [ -f "${LOCK_STARTED}" ] && ERRO "$0 already started"
+    touch "${LOCK_STARTED}"
 
     INFO "Load: ${CONFIG}"
     # shellcheck source=/run/systemd/swap/swap.conf
@@ -142,12 +142,12 @@ case "$1" in
       [[ ! -r ${L_CONF} ]] && continue
       BASE=$(basename "${L_CONF}")
       [[ ${CONFS[${BASE}]} ]] && BASES=("${BASES[@]/${BASE}}")
-      CONFS["${BASE}"]=${L_CONF}
+      CONFS["${BASE}"]="${L_CONF}"
       BASES+=("${BASE}")
     done
     for BASE in "${BASES[@]}"; do
       [[ ! ${BASE} ]] && continue
-      L_CONF=${CONFS[${BASE}]}
+      L_CONF="${CONFS[${BASE}]}"
       # shellcheck source=/run/systemd/swap/swap.conf
       . "${L_CONF}" || ERRO "Problems while load of ${L_CONF}"
     done
@@ -186,12 +186,12 @@ case "$1" in
       zram_dev=""
 
       INFO "Zram: check availability"
-      if [ ! -d /sys/module/zram ]; then
+      if [ ! -d "/sys/module/zram" ]; then
         INFO "Zram: not part of kernel, trying to find zram module"
         modprobe -n zram || ERRO "Zram: can't find zram module!"
         # Wrapper, for handling zram initialization problems
         for (( i = 0; i < 10; i++ )); do
-          [ -d /sys/module/zram ] && break
+          [ -d "/sys/module/zram" ] && break
           modprobe zram
           sleep 1
         done
@@ -409,19 +409,19 @@ case "$1" in
     fi
   ;;
   stop)
-    [ ! -f ${LOCK_STARTED} ] && INFO_E "$0 already stopped"
+    [ ! -f "${LOCK_STARTED}" ] && INFO_E "$0 already stopped"
 
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
       if grep -q swapd "${UNIT_PATH}"; then
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
         UNIT_NAME=$(basename "${UNIT_PATH}")
         swapoff "${DEV}"
-        rm -f "${UNIT_NAME}"
+        rm -vf "${UNIT_NAME}"
       fi
     done
 
     if [ -f "${WORK_DIR}/swapfc/.lock" ]; then
-      rm -f "${WORK_DIR}/swapfc/.lock"
+      rm -vf "${WORK_DIR}/swapfc/.lock"
       sleep 5 # Wait some time
     fi
 
@@ -430,7 +430,7 @@ case "$1" in
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
         UNIT_NAME=$(basename "${UNIT_PATH}")
         swapoff "${DEV}"
-        rm -f "${UNIT_NAME}"
+        rm -vf "${UNIT_NAME}"
         [ -f "${DEV}" ] && rm -f "${DEV}"
       fi
     done
@@ -441,7 +441,7 @@ case "$1" in
         UNIT_NAME=$(basename "${UNIT_PATH}")
         INFO "Zram: swapoff ${DEV}"
         swapoff "${DEV}"
-        rm -f "${UNIT_PATH}"
+        rm -vf "${UNIT_PATH}"
         zramctl -r "${DEV}"
       fi
     done
@@ -456,7 +456,7 @@ case "$1" in
 
     wait
 
-    rm -f ${LOCK_STARTED}
+    rm -vf "${LOCK_STARTED}"
   ;;
   status)
     SWAP_TOTAL=$(grep SwapTotal: /proc/meminfo | grep -o '[0-9]*')
