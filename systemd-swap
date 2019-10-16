@@ -493,10 +493,9 @@ case "$1" in
       echo ZRam:
       zramctl | \
         grep -e '^NAME\|\[SWAP\]' | \
-        sed 's/^/. /g' | \
-        column -t \
-          -c \.,NAME,ALGORITHM,DISKSIZE,DATA,COMPR,TOTAL,STREAMS,MOUNTPOINT |\
-          uniq
+        sed -e 's/\(MOUNTPOINT\|\[SWAP\]\)$//g' -e 's/^/.\t/g' | \
+        column -t | \
+        uniq
     fi
 
     if [ -d /run/systemd/swap/swapd ]; then
