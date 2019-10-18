@@ -35,7 +35,7 @@ sudo systemctl enable systemd-swap
   ```shell
   git clone https://github.com/Nefelim4ag/systemd-swap.git
   ./systemd-swap/package.sh debian
-  sudo dpkg -i ././systemd-swap/systemd-swap-*any.deb
+  sudo dpkg -i ././systemd-swap/systemd-swap_*_all.deb
   ```
 
 - <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh)
