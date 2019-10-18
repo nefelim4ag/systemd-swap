@@ -29,8 +29,8 @@ sudo systemctl enable systemd-swap
 
 ## Install
 
-- ![logo](<https://www.monitorix.org/imgs/archlinux.png> "arch logo" =16x16) **Arch**: in the [community](https://www.archlinux.org/packages/community/any/systemd-swap/).
-- ![logo](<https://www.monitorix.org/imgs/debian.png> "debian logo" =16x16) **Debian**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh) in git repo
+- <img src="https://www.monitorix.org/imgs/archlinux.png" weight="16" height="16"> **Arch**: in the [community](https://www.archlinux.org/packages/community/any/systemd-swap/).
+- <img src="https://www.monitorix.org/imgs/debian.png" weight="16" height="16"> **Debian**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh) in git repo
 
   ```shell
   git clone https://github.com/Nefelim4ag/systemd-swap.git
@@ -38,7 +38,7 @@ sudo systemctl enable systemd-swap
   sudo dpkg -i ././systemd-swap/systemd-swap-*any.deb
   ```
 
-- ![logo](<https://www.monitorix.org/imgs/fedora.png> "fedora logo" =16x16) **Fedora**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh)
+- <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh)
 
   ```shell
   git clone https://github.com/Nefelim4ag/systemd-swap.git
@@ -55,26 +55,26 @@ sudo systemctl enable systemd-swap
 
 ## About configuration
 
-**Q**: WTF?! Why you merge swapFC and swapFU?
+**Q**: WTF?! Why you merge swapFC and swapFU?\
 **A**: That simplify testing of swapFC code and make code more generic
 
-**Q**: How can i migrate config swapFU from 3.X to 4.X?
+**Q**: How can i migrate config swapFU from 3.X to 4.X?\
 **A**: Most of switches are same, to get configuration like swapFU from swapFC, set `swapfc_max_count` to `1` and `swapfc_chunk_size` to size of swapFU.
 
-**Q**: Do we need to activate both zram and zswap?
+**Q**: Do we need to activate both zram and zswap?\
 **A**: Nope, it's useless, as zram is a compressed RAM DISK, but zswap is a compressed _"writeback"_ CACHE on swap file/disk.
 
-**Q**: Do i need use `swapfc_force_use_loop` on swapFC?
+**Q**: Do i need use `swapfc_force_use_loop` on swapFC?\
 **A**: Nope, as you wish really, native swapfile must work faster and it's more safe in OOM condition in comparison to loop backed scenario.
 
-**Q**: When would we want a certain configuration?
+**Q**: When would we want a certain configuration?\
 **A**: In most cases (Notebook, Desktop, Server) it's enough to enable zswap + swapfc (On server tuning of swapfc can be needed).
 In case where SSD used, and you care about flash wear, use only ZRam.
 
-**Q**: Where is the swap file located?
+**Q**: Where is the swap file located?\
 **A**: Read carefully swap.conf
 
-**Q**: Can we use this to enable hibernation?
+**Q**: Can we use this to enable hibernation?\
 **A**: Nope as hibernation wants a persistent fs blocks and wants access to swap data directly from disk, this will not work on: _zram_, _swapfu_, _swapfc_ (without some magic of course).
 
 ## Note
