@@ -265,11 +265,14 @@ case "$1" in
       BLOCK_SIZE=$(stat -f -c %s "${swapfc_path}")
       FSTYPE=$(get_fs_type "${swapfc_path}")
 
-      YN "${swapfc_force_use_loop}" && FSTYPE=btrfs
+      # don't enable regular swap files on btrfs system with kernel version lower than 5,
+      #		force swap through loop files instead
+      if [ "$FSTYPE" = "btrfs" ] && [ $(uname -r | cut -d. -f1) -lt 5 ]; then
+            FSTYPE="btrfs_old"
+      fi
 
-      #TODO: Check if running on an older kernel where btrfs didn't yet support swap files
-      #[ "${FSTYPE}" != btrfs ] && swapfc_force_preallocated=1
-      swapfc_force_preallocated=1
+      YN "${swapfc_force_use_loop}" && FSTYPE=btrfs_old
+      [ "${FSTYPE}" != "btrfs_old" ] && swapfc_force_preallocated=1
 
       check_ENOSPC(){
         path="$1"
@@ -315,10 +318,9 @@ case "$1" in
         case "${FSTYPE}" in
           ext2|ext3|ext4|btrfs)
           ;;
-	  # TODO: enable on kernel < 5
-          #btrfs)
-          #  RET=$(losetup_w "${file}")
-          #;;
+          btrfs_old)
+            RET=$(losetup_w "${file}")
+          ;;
           *)
             # -z rewrite file second time
             # By default shred gen random
