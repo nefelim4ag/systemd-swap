@@ -265,10 +265,14 @@ case "$1" in
       BLOCK_SIZE=$(stat -f -c %s "${swapfc_path}")
       FSTYPE=$(get_fs_type "${swapfc_path}")
 
-      # don't enable regular swap files on btrfs system with kernel version lower than 5,
-      #		force swap through loop files instead
-      if [ "$FSTYPE" = "btrfs" ] && [ $(uname -r | cut -d. -f1) -lt 5 ]; then
-            FSTYPE="btrfs_old"
+      if [ "$FSTYPE" = "btrfs" ]; then
+            # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
+            # if it doesn't, use the old swap through loop workaround
+            if [ $(uname -r | cut -d. -f1) -ge 5 ]; then
+                  swapfc_nocow=true
+            else
+                  FSTYPE="btrfs_old"
+            fi
       fi
 
       YN "${swapfc_force_use_loop}" && FSTYPE=btrfs_old
