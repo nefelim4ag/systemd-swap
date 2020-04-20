@@ -379,7 +379,7 @@ case "$1" in
                 DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
                 UNIT_NAME=$(basename "${UNIT_PATH}")
                 systemctl stop "${UNIT_NAME}" || swapoff "${DEV}"
-                rm -f "${UNIT_NAME}"
+                rm -vf "${UNIT_PATH}"
                 [ -f "${DEV}" ] && rm -f "${DEV}"
               fi
             done
@@ -398,7 +398,7 @@ case "$1" in
           DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
           UNIT_NAME=$(basename "${UNIT_PATH}")
           swapoff "${DEV}"
-          rm -f "${UNIT_NAME}"
+          rm -vf "${UNIT_PATH}"
         fi
       done
 
@@ -425,7 +425,7 @@ case "$1" in
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
         UNIT_NAME=$(basename "${UNIT_PATH}")
         swapoff "${DEV}"
-        rm -vf "${UNIT_NAME}"
+        rm -vf "${UNIT_PATH}"
       fi
     done
 
@@ -439,7 +439,7 @@ case "$1" in
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
         UNIT_NAME=$(basename "${UNIT_PATH}")
         swapoff "${DEV}"
-        rm -vf "${UNIT_NAME}"
+        rm -vf "${UNIT_PATH}"
         [ -f "${DEV}" ] && rm -f "${DEV}"
       fi
     done
