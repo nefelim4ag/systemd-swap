@@ -35,6 +35,18 @@ archlinux_package(){
   INFO "Use pacman -S systemd-swap"
 }
 
+centos_package(){
+  cd "$(dirname "$0")"
+  VERSION=$(git tag | tail -n 1)
+  [ -z "${VERSION}" ] && ERRO "Can't get git tag, VERSION are empty!"
+  test -d ./build && rm -rf ./build
+  mkdir -p ./build/BUILD
+  find . -type f ! -path './.git/*' ! -path './build/*' -exec cp {} build/BUILD \;
+  rpmbuild --define "_topdir `pwd`/build" -bb systemd-swap.spec
+  mv build/RPMS/noarch/*.rpm ./
+  rm -rf ./build
+}
+
 fedora_package(){
   cd "$(dirname "$0")"
   FEDORA_VERSION=$1
@@ -57,7 +69,10 @@ case $1 in
   fedora)
     fedora_package "$2"
   ;;
+  centos)
+    centos_package
+  ;;
   *)
-    echo "$0 <debian|archlinux|fedora [version]>"
+    echo "$0 <debian|archlinux|fedora [version]>|centos"
   ;;
 esac
