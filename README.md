@@ -46,6 +46,14 @@ sudo systemctl enable systemd-swap
   sudo dnf install ./systemd-swap/systemd-swap-*noarch.rpm
   ```
 
+- <img src="https://www.monitorix.org/imgs/centos.png" weight="16" height="16"> **CentOS**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh)
+
+  ```shell
+  git clone https://github.com/Nefelim4ag/systemd-swap.git
+  ./systemd-swap/package.sh centos
+  sudo yum install ./systemd-swap/systemd-swap-*noarch.rpm
+  ```
+
 - **Manual**
 
   ```shell
