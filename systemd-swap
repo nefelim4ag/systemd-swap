@@ -63,7 +63,7 @@ readonly ZSWAP_M="/sys/module/zswap"
 readonly ZSWAP_M_P="/sys/module/zswap/parameters"
 
 readonly KMAJOR=$(uname -r | cut -d'.' -f1)
-readonly KMINOR=$(uname -r | cut -d'.' -f2)
+# readonly KMINOR=$(uname -r | cut -d'.' -f2)
 
 # swap unit generator
 gen_swap_unit(){
@@ -134,7 +134,7 @@ case "$1" in
     touch "${LOCK_STARTED}"
 
     INFO "Load: ${CONFIG}"
-    # shellcheck source=/run/systemd/swap/swap.conf
+    # shellcheck source=swap.conf
     . "${CONFIG}" || ERRO "Problems while load of ${CONFIG}"
 
     declare -A CONFS
@@ -148,7 +148,7 @@ case "$1" in
     for BASE in "${BASES[@]}"; do
       [[ ! ${BASE} ]] && continue
       L_CONF="${CONFS[${BASE}]}"
-      # shellcheck source=/run/systemd/swap/swap.conf
+      # shellcheck source=swap.conf
       . "${L_CONF}" || ERRO "Problems while load of ${L_CONF}"
     done
 
@@ -180,7 +180,7 @@ case "$1" in
     if YN "${zram_enabled}"; then
       [ -z "${zram_size}" ] && zram_size=$(( RAM_SIZE / 4 ))
       zram_count=${zram_count:-${NCPU}}
-      zram_size=$(( ${zram_size} / ${zram_count} ))
+      zram_size=$(( zram_size / zram_count ))
       zram_streams=${zram_streams:-${NCPU}}
       zram_alg=${zram_alg:-"lz4"}
       zram_prio=${zram_prio:-"32767"}
@@ -201,7 +201,7 @@ case "$1" in
         INFO "Zram: module already loaded"
       fi
 
-      for (( i = 0; i < ${zram_count}; i++ )); do
+      for (( i = 0; i < zram_count; i++ )); do
         INFO "Zram: trying to initialize free device"
         # zramctl is a external program -> return name of first free device
         TMP=$(mktemp)
@@ -254,7 +254,7 @@ case "$1" in
         free="$(grep SwapFree: /proc/meminfo | grep -o -e '[0-9]*')"
         total=$(( total * 1024 ))
         free=$(( free * 1024 ))
-        echo $(( (${free} * 100) / (${total} + 1) ));
+        echo $(( (free * 100) / (total + 1) ));
       }
 
       to_bytes(){ numfmt --to=none --from=iec "$1"; }
@@ -269,7 +269,7 @@ case "$1" in
       if [ "$FSTYPE" = "btrfs" ]; then
             # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
             # if it doesn't, use the old swap through loop workaround
-            if [ $(uname -r | cut -d. -f1) -ge 5 ]; then
+            if [ "${KMAJOR}" -ge 5 ]; then
                   swapfc_nocow=true
             else
                   FSTYPE="btrfs_old"
@@ -476,9 +476,9 @@ case "$1" in
     if [ -d /sys/module/zswap ]; then
       echo Zswap:
       read -r USED_BYTES < /sys/kernel/debug/zswap/pool_total_size
-      USED_PAGES=$(( USED_BYTES / ${PAGE_SIZE} ))
+      USED_PAGES=$(( USED_BYTES / PAGE_SIZE ))
       read -r STORED_PAGES < /sys/kernel/debug/zswap/stored_pages
-      STORED_BYTES=$(( STORED_PAGES * ${PAGE_SIZE} ))
+      STORED_BYTES=$(( STORED_PAGES * PAGE_SIZE ))
       RATIO=0
       (( STORED_PAGES > 0 )) && RATIO=$(( USED_PAGES * 100 / STORED_PAGES ))
       {
