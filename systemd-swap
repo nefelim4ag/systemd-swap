@@ -179,7 +179,8 @@ case "$1" in
     zram_enabled=${zram_enabled:-0}
     if YN "${zram_enabled}"; then
       [ -z "${zram_size}" ] && zram_size=$(( RAM_SIZE / 4 ))
-      zram_size=$(( zram_size / ${NCPU} ))
+      zram_count=${zram_count:-${NCPU}}
+      zram_size=$(( ${zram_size} / ${zram_count} ))
       zram_streams=${zram_streams:-${NCPU}}
       zram_alg=${zram_alg:-"lz4"}
       zram_prio=${zram_prio:-"32767"}
@@ -200,7 +201,7 @@ case "$1" in
         INFO "Zram: module already loaded"
       fi
 
-      for (( i = 0; i < ${NCPU}; i++ )); do
+      for (( i = 0; i < ${zram_count}; i++ )); do
         INFO "Zram: trying to initialize free device"
         # zramctl is a external program -> return name of first free device
         TMP=$(mktemp)
