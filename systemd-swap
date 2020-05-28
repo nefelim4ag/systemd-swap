@@ -49,6 +49,21 @@ help(){
   echo "   status - show some swap status info"
 }
 
+snore()
+{
+    local IFS
+    [[ -n "${_snore_fd:-}" ]] || { exec {_snore_fd}<> <(:); } 2>/dev/null ||
+    {
+        # workaround for MacOS and similar systems
+        local fifo
+        fifo=$(mktemp -u)
+        mkfifo -m 700 "$fifo"
+        exec {_snore_fd}<>"$fifo"
+        rm "$fifo"
+    }
+    read ${1:+-t "$1"} -u $_snore_fd || :
+}
+
 # Global vars
 readonly RUN_SYSD="/run/systemd"
 readonly NCPU=$(nproc)
@@ -194,7 +209,7 @@ case "$1" in
         for (( i = 0; i < 10; i++ )); do
           [ -d "/sys/module/zram" ] && break
           modprobe zram
-          sleep 1
+          snore 1
         done
         INFO "Zram: module successfully loaded"
       else
@@ -210,7 +225,7 @@ case "$1" in
         rm -f "${TMP}"
         case "${OUTPUT}" in
           *"failed to reset: Device or resource busy"*)
-            sleep 1
+            snore 1
           ;;
           *"zramctl: no free zram device found"*)
             WARN "Zram: zramctl can't find free device"
@@ -242,7 +257,7 @@ case "$1" in
       chunk_size=${swapfc_chunk_size:-"512M"}
       swapfc_max_count=${swapfc_max_count:-"8"}
       swapfc_path=${swapfc_path:-"/var/lib/systemd-swap/swapfc/"}
-      swapfc_frequency=${swapfc_frequency:-"1s"}
+      swapfc_frequency=${swapfc_frequency:-"1"}
       swapfc_force_use_loop=${swapfc_force_use_loop:-"0"}
       swapfc_nocow=${swapfc_nocow:-"1"}
       swapfc_directio=${swapfc_directio:-"1"}
@@ -350,7 +365,7 @@ case "$1" in
         allocated=0
         free_threshold_up=${swapfc_free_swap_perc}
         free_threshold_down=$(( swapfc_free_swap_perc + 40 ))
-        while [ -f "${WORK_DIR}/swapfc/.lock" ] && sleep "${swapfc_frequency}"; do
+        while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
           curr_free_swap_perc=$(get_free_swap_perc)
           if (( curr_free_swap_perc < free_threshold_up )) && (( allocated < swapfc_max_count )); then
             if check_ENOSPC "${swapfc_path}"; then
@@ -432,7 +447,7 @@ case "$1" in
 
     if [ -f "${WORK_DIR}/swapfc/.lock" ]; then
       rm -vf "${WORK_DIR}/swapfc/.lock"
-      sleep 5 # Wait some time
+      snore 5 # Wait some time
     fi
 
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
