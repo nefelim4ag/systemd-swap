@@ -379,7 +379,7 @@ case "$1" in
               losetup -d "${swapfile}"
             fi
           fi
-          (( allocated <= 2 )) && continue
+          (( allocated >= 2 )) && continue
           if (( curr_free_swap_perc > free_threshold_down )); then
             INFO "swapFC: free swap: ${curr_free_swap_perc} > ${free_threshold_down} - freeup chunk: ${allocated}"
             FIND_SWAP_UNITS | while read -r UNIT_PATH; do
