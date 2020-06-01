@@ -263,6 +263,14 @@ case "$1" in
         free=$(( free * 1024 ))
         echo $(( (free * 100) / (total + 1) ));
       }
+      get_free_ram_perc(){
+        # +1 prevent devide by zero
+        total="$(grep MemTotal: /proc/meminfo | grep -o -e '[0-9]*')"
+        free="$(grep MemFree: /proc/meminfo | grep -o -e '[0-9]*')"
+        total=$(( total * 1024 ))
+        free=$(( free * 1024 ))
+        echo $(( (free * 100) / total ));
+      }
 
       to_bytes(){ numfmt --to=none --from=iec "$1"; }
 
@@ -358,6 +366,30 @@ case "$1" in
         free_threshold_up=${swapfc_free_swap_perc}
         free_threshold_down=$(( swapfc_free_swap_perc + 40 ))
         while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
+          curr_free_ram_perc=$(get_free_ram_perc)
+          if [ $allocated -eq 0 ] && (( curr_free_ram_perc < free_threshold_up)); then
+            if check_ENOSPC "${swapfc_path}"; then
+              WARN "swapFC: ENOSPC"
+              continue
+            fi
+            allocated=$(( allocated + 1 ))
+            INFO "swapFC: free ram: ${curr_free_ram_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
+            swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
+            mkswap -L SWAP_${FSTYPE}_${allocated} "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
+            if YN ${swapfc_force_preallocated}; then
+              UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
+            else
+              UNIT_NAME=$(gen_swap_unit What="${swapfile}" Options=discard Tag="swapfc_${allocated}")
+            fi
+            systemctl daemon-reload
+            systemctl start "${UNIT_NAME}"
+            if [ -b "${swapfile}" ]; then
+              losetup -d "${swapfile}"
+            fi
+            continue
+          elif [ $allocated -eq 0 ]; then
+            continue
+          fi
           curr_free_swap_perc=$(get_free_swap_perc)
           if (( curr_free_swap_perc < free_threshold_up )) && (( allocated < swapfc_max_count )); then
             if check_ENOSPC "${swapfc_path}"; then
