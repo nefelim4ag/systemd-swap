@@ -52,7 +52,7 @@ help(){
 snore()
 {
     local IFS
-    [[ -n "${_snore_fd:-}" ]] || { exec {_snore_fd}<> <(:)
+    [[ -n "${_snore_fd:-}" ]] || exec {_snore_fd}<> <(:)
     read ${1:+-t "$1"} -u $_snore_fd || :
 }
 
