@@ -303,7 +303,7 @@ case "$1" in
         touch "${file}"
         chmod 0600 "${file}"
 
-        YN "${swapfc_nocow}" && chattr +C "${file}"
+        [ "$FSTYPE" = "btrfs" ] && YN "${swapfc_nocow}" && chattr +C "${file}"
 
         if YN ${swapfc_force_preallocated}; then
           # ext2/3 not support fallocate
