@@ -41,7 +41,7 @@ read_l(){
 get_fs_type(){ df "$1" --output=fstype | tail -n 1; }
 AMI_ROOT(){ [ "${UID}" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/system/ /run/systemd/generator/ -type f -name "*.swap"; }
-GET_WHAT_FROM_SWAP_UNIT(){ grep What "$1" | cut -d'=' -f2; }
+GET_WHAT_FROM_SWAP_UNIT(){ grep -oP 'What=\K.*' "$1"; }
 help(){
   echo "$0 start|stop|status"
   echo "   start  - init daemon"
@@ -264,7 +264,6 @@ case "$1" in
         echo $(( (free * 100) / (total + 1) ));
       }
       get_free_ram_perc(){
-        # +1 prevent devide by zero
         total="$(grep -oP 'MemTotal:\s*\K[0-9]*' /proc/meminfo)"
         free="$(grep -oP 'MemFree:\s*\K[0-9]*' /proc/meminfo)"
         total=$(( total * 1024 ))
