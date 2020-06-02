@@ -59,7 +59,7 @@ snore()
 # Global vars
 readonly RUN_SYSD="/run/systemd"
 readonly NCPU=$(nproc)
-readonly RAM_SIZE=$(( $(grep MemTotal: /proc/meminfo | grep -o '[0-9]*') * 1024 ))
+readonly RAM_SIZE=$(( $(grep -oP 'MemTotal:\s*\K[0-9]*' /proc/meminfo) * 1024 ))
 readonly PAGE_SIZE=$(getconf PAGESIZE)
 readonly ETC_SYSD="/etc/systemd"
 readonly CONFIG="${ETC_SYSD}/swap.conf"
@@ -257,16 +257,16 @@ case "$1" in
       swapfc_free_swap_perc=${swapfc_free_swap_perc:-"15"}
       get_free_swap_perc(){
         # +1 prevent devide by zero
-        total="$(grep SwapTotal: /proc/meminfo | grep -o -e '[0-9]*')"
-        free="$(grep SwapFree: /proc/meminfo | grep -o -e '[0-9]*')"
+        total="$(grep -oP 'SwapTotal:\s*\K[0-9]*' /proc/meminfo)"
+        free="$(grep -oP 'SwapFree:\s*\K[0-9]*' /proc/meminfo)"
         total=$(( total * 1024 ))
         free=$(( free * 1024 ))
         echo $(( (free * 100) / (total + 1) ));
       }
       get_free_ram_perc(){
         # +1 prevent devide by zero
-        total="$(grep MemTotal: /proc/meminfo | grep -o -e '[0-9]*')"
-        free="$(grep MemFree: /proc/meminfo | grep -o -e '[0-9]*')"
+        total="$(grep -oP 'MemTotal:\s*\K[0-9]*' /proc/meminfo)"
+        free="$(grep -oP 'MemFree:\s*\K[0-9]*' /proc/meminfo)"
         total=$(( total * 1024 ))
         free=$(( free * 1024 ))
         echo $(( (free * 100) / total ));
@@ -508,8 +508,8 @@ case "$1" in
     rm -vf "${LOCK_STARTED}"
   ;;
   status)
-    SWAP_TOTAL=$(grep SwapTotal: /proc/meminfo | grep -o '[0-9]*')
-    SWAP_FREE=$(grep SwapFree: /proc/meminfo | grep -o '[0-9]*')
+    SWAP_TOTAL=$(grep -oP 'SwapTotal:\s*\K[0-9]*' /proc/meminfo)
+    SWAP_FREE=$(grep -oP 'SwapFree:\s*\K[0-9]*' /proc/meminfo)
     SWAP_USED=$(( (SWAP_TOTAL - SWAP_FREE) * 1024 ))
 
     if [ -d /sys/module/zswap ]; then
