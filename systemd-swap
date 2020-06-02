@@ -366,29 +366,31 @@ case "$1" in
         free_threshold_up=${swapfc_free_swap_perc}
         free_threshold_down=$(( swapfc_free_swap_perc + 40 ))
         while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
-          curr_free_ram_perc=$(get_free_ram_perc)
-          if [ $allocated -eq 0 ] && (( curr_free_ram_perc < free_threshold_up)); then
-            if check_ENOSPC "${swapfc_path}"; then
-              WARN "swapFC: ENOSPC"
+          if [ $allocated -eq 0 ]; then
+            curr_free_ram_perc=$(get_free_ram_perc)
+            if (( curr_free_ram_perc < free_threshold_up)); then
+              if check_ENOSPC "${swapfc_path}"; then
+                WARN "swapFC: ENOSPC"
+                continue
+              fi
+              allocated=$(( allocated + 1 ))
+              INFO "swapFC: free ram: ${curr_free_ram_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
+              swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
+              mkswap -L SWAP_${FSTYPE}_${allocated} "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
+              if YN ${swapfc_force_preallocated}; then
+                UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
+              else
+                UNIT_NAME=$(gen_swap_unit What="${swapfile}" Options=discard Tag="swapfc_${allocated}")
+              fi
+              systemctl daemon-reload
+              systemctl start "${UNIT_NAME}"
+              if [ -b "${swapfile}" ]; then
+                losetup -d "${swapfile}"
+              fi
+              continue
+            else
               continue
             fi
-            allocated=$(( allocated + 1 ))
-            INFO "swapFC: free ram: ${curr_free_ram_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
-            swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
-            mkswap -L SWAP_${FSTYPE}_${allocated} "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
-            if YN ${swapfc_force_preallocated}; then
-              UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
-            else
-              UNIT_NAME=$(gen_swap_unit What="${swapfile}" Options=discard Tag="swapfc_${allocated}")
-            fi
-            systemctl daemon-reload
-            systemctl start "${UNIT_NAME}"
-            if [ -b "${swapfile}" ]; then
-              losetup -d "${swapfile}"
-            fi
-            continue
-          elif [ $allocated -eq 0 ]; then
-            continue
           fi
           curr_free_swap_perc=$(get_free_swap_perc)
           if (( curr_free_swap_perc < free_threshold_up )) && (( allocated < swapfc_max_count )); then
