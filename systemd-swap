@@ -163,9 +163,9 @@ case "$1" in
     if YN "${zswap_enabled}"; then
       [ ! -d ${ZSWAP_M} ] && ERRO "Zswap - not supported on current kernel"
 
-      zswap_compressor=${zswap_compressor:-lz4}
+      zswap_compressor=${zswap_compressor:-zstd}
       zswap_max_pool_percent=${zswap_max_pool_percent:-25}
-      zswap_zpool=${zswap_zpool:-zbud}
+      zswap_zpool=${zswap_zpool:-z3fold}
 
       INFO "Zswap: backup current configuration: start"
       mkdir -p "${WORK_DIR}/zswap"
@@ -189,7 +189,7 @@ case "$1" in
       zram_count=${zram_count:-${NCPU}}
       zram_size=$(( zram_size / zram_count ))
       zram_streams=${zram_streams:-${NCPU}}
-      zram_alg=${zram_alg:-"lz4"}
+      zram_alg=${zram_alg:-"zstd"}
       zram_prio=${zram_prio:-"32767"}
       zram_dev=""
 
