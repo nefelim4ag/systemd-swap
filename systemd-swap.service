@@ -14,16 +14,15 @@ TimeoutStopSec=600
 Nice=-19
 OOMScoreAdjust=-1000
 CPUAccounting=true
-CapabilityBoundingSet=CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_MODULE
 IPAddressDeny=any
 NoNewPrivileges=true
 ProtectHome=read-only
 PrivateNetwork=yes
-PrivateDevices=yes
 PrivateTmp=yes
 RestrictNamespaces=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
-SystemCallFilter=@system-service @swap
+SystemCallFilter=@system-service @swap @module
 
 [Install]
 WantedBy=local-fs.target
