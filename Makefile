@@ -1,5 +1,5 @@
 PREFIX ?= /
-FEDORA_VERSION ?= f28
+FEDORA_VERSION ?= f32
 
 default:  help
 

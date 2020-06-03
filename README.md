@@ -42,7 +42,7 @@ sudo systemctl enable systemd-swap
 
   ```shell
   git clone https://github.com/Nefelim4ag/systemd-swap.git
-  ./systemd-swap/package.sh fedora f28
+  ./systemd-swap/package.sh fedora f32
   sudo dnf install ./systemd-swap/systemd-swap-*noarch.rpm
   ```
 
