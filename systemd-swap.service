@@ -15,6 +15,10 @@ Nice=-19
 OOMScoreAdjust=-1000
 CPUAccounting=true
 ProtectHome=read-only
+PrivateNetwork=yes
+PrivateDevices=yes
+PrivateTmp=yes
+CapabilityBoundingSet=CAP_SYS_ADMIN
 
 [Install]
 WantedBy=local-fs.target
