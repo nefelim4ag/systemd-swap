@@ -311,7 +311,7 @@ case "$1" in
         chmod 0600 "${file}"
 
         [ "$FSTYPE" = "btrfs" ] && YN "${swapfc_nocow}" && chattr +C "${file}"
-        if [ "${KMAJOR}""${KMINOR}" -ge 57 ]; then
+        if [ "$FSTYPE" = "ext*" ] || [ "$FSTYPE" = "xfs" ] && [ "${KMAJOR}""${KMINOR}" -ge 57 ]; then
           if echo "$chunk_size" | grep -q "G"; then
             dd if=/dev/zero of="$file" bs=1M count=$(( $(echo "$chunk_size" | grep -oP '\d*') / 1024))
           else
