@@ -70,7 +70,7 @@ readonly ZSWAP_M="/sys/module/zswap"
 readonly ZSWAP_M_P="/sys/module/zswap/parameters"
 
 readonly KMAJOR=$(uname -r | cut -d'.' -f1)
-# readonly KMINOR=$(uname -r | cut -d'.' -f2)
+readonly KMINOR=$(uname -r | cut -d'.' -f2)
 
 # swap unit generator
 gen_swap_unit(){
@@ -311,13 +311,20 @@ case "$1" in
         chmod 0600 "${file}"
 
         [ "$FSTYPE" = "btrfs" ] && YN "${swapfc_nocow}" && chattr +C "${file}"
-
-        if YN ${swapfc_force_preallocated}; then
-          # ext2/3 not support fallocate
-          fallocate -l "${chunk_size}" "${file}" \
-          || truncate -s "${chunk_size}" "${file}"
+        if [ "${KMAJOR}""${KMINOR}" -ge 57 ]; then
+          if echo "$chunk_size" | grep -q "G"; then
+            dd if=/dev/zero of="$file" bs=1024 count=$(echo "$chunk_size" | grep -oP '\d*')
+          else
+            dd if=/dev/zero of="$file" bs=1024 count=$(( $(echo "$chunk_size" | grep -oP '\d*') / 1024))
+          fi
         else
-          truncate -s "${chunk_size}" "${file}"
+          if YN ${swapfc_force_preallocated}; then
+            # ext2/3 not support fallocate
+            fallocate -l "${chunk_size}" "${file}" \
+            || truncate -s "${chunk_size}" "${file}"
+          else
+            truncate -s "${chunk_size}" "${file}"
+          fi
         fi
 
         losetup_w(){
