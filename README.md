@@ -165,7 +165,7 @@ If you use SSD and care about flash memory wear, use only ZRam.
   update-grub
 
   # For Centos 7
-  update-grub
+  grub2-mkconfig -o /boot/grub2/grub.cfg
 
   # For Manjaro
   update-grub
