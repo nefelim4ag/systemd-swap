@@ -312,13 +312,7 @@ case "$1" in
 
         [ "$FSTYPE" = "btrfs" ] && YN "${swapfc_nocow}" && chattr +C "${file}"
         if [[ $FSTYPE = ext* || $FSTYPE = xfs ]]; then
-          if [[ $chunk_size == *"G" ]]; then
-            dd if=/dev/zero of="$file" bs=1M count=$(( $(echo "$chunk_size" | grep -oP '\d*') / 1024))
-          elif [[ $chunk_size == *"M" ]]; then
-            dd if=/dev/zero of="$file" bs=1M count=$(( $(echo "$chunk_size" | grep -oP '\d*') / 1048576))
-          else
-            ERRO "chunk_size must be followed by a M or G suffix"
-          fi
+          dd if=/dev/zero of="$file" bs=1M count=$(( $chunk_size / 1048576))
         else
           if YN ${swapfc_force_preallocated}; then
             # ext2/3 not support fallocate
