@@ -312,9 +312,9 @@ case "$1" in
 
         [ "$FSTYPE" = "btrfs" ] && YN "${swapfc_nocow}" && chattr +C "${file}"
         if [[ $FSTYPE = ext* || $FSTYPE = xfs ]]; then
-          if echo "$chunk_size" | grep -q "G"; then
+          if [[ $chunk_size == *"G" ]]; then
             dd if=/dev/zero of="$file" bs=1M count=$(( $(echo "$chunk_size" | grep -oP '\d*') / 1024))
-          elif echo "$chunk_size" | grep -q "M"; then
+          elif [[ $chunk_size == *"M" ]]; then
             dd if=/dev/zero of="$file" bs=1M count=$(( $(echo "$chunk_size" | grep -oP '\d*') / 1048576))
           else
             ERRO "chunk_size must be followed by a M or G suffix"
