@@ -38,6 +38,28 @@ read_l(){
   echo "${DATA}" | base64 -d
 }
 
+get_mem_stat_multi() {
+  # expects name of output array as $1, followed by n wanted keys
+  local -ar fields=("${@:2}")
+  local -n outref="$1"
+  local -i matches=0
+  while read -r line; do
+    for field in "${fields[@]}"; do
+      if [[ $line =~ ^$field:[[:space:]]+([[:digit:]]+)[[:space:]]+kB$ ]]; then
+          outref+=( $(( BASH_REMATCH[1] * 1024 )) )
+          ((++matches))
+      fi
+    done
+    ((matches == ${#fields[@]})) && break;
+  done < /proc/meminfo
+}
+
+get_mem_stat() {
+  local -a value
+  get_mem_stat_multi value "$1"
+  printf "%s" "${value[0]}"
+}
+
 get_fs_type(){ df "$1" --output=fstype | tail -n 1; }
 AMI_ROOT(){ [ "${UID}" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/system/ /run/systemd/generator/ -type f -name "*.swap"; }
@@ -59,7 +81,7 @@ snore()
 # Global vars
 readonly RUN_SYSD="/run/systemd"
 readonly NCPU=$(nproc)
-readonly RAM_SIZE=$(( $(grep -oP 'MemTotal:\s*\K[0-9]*' /proc/meminfo) * 1024 ))
+readonly RAM_SIZE=$(get_mem_stat MemTotal)
 readonly PAGE_SIZE=$(getconf PAGESIZE)
 readonly ETC_SYSD="/etc/systemd"
 readonly CONFIG="${ETC_SYSD}/swap.conf"
@@ -255,20 +277,19 @@ case "$1" in
       swapfc_directio=${swapfc_directio:-"1"}
       swapfc_force_preallocated=${swapfc_force_preallocated:-"0"}
       swapfc_free_swap_perc=${swapfc_free_swap_perc:-"15"}
+
       get_free_swap_perc(){
-        # +1 prevent devide by zero
-        total="$(grep -oP 'SwapTotal:\s*\K[0-9]*' /proc/meminfo)"
-        free="$(grep -oP 'SwapFree:\s*\K[0-9]*' /proc/meminfo)"
-        total=$(( total * 1024 ))
-        free=$(( free * 1024 ))
-        echo $(( (free * 100) / (total + 1) ));
+        local -a swap_stats
+        get_mem_stat_multi swap_stats SwapTotal SwapFree
+        SWAP_USED=$(( swap_stats[0] - swap_stats[1] ))
+        # minimum for total is 1 to prevent divide by zero
+        echo $(( (swap_stats[1] * 100) / (swap_stats[0] + 1) ));
       }
+      
       get_free_ram_perc(){
-        total="$(grep -oP 'MemTotal:\s*\K[0-9]*' /proc/meminfo)"
-        free="$(grep -oP 'MemFree:\s*\K[0-9]*' /proc/meminfo)"
-        total=$(( total * 1024 ))
-        free=$(( free * 1024 ))
-        echo $(( (free * 100) / total ));
+        local -a ram_stats
+        get_mem_stat_multi ram_stats MemTotal MemFree
+        echo $(( (ram_stats[1] * 100) / ram_stats[0] ));
       }
 
       to_bytes(){ numfmt --to=none --from=iec "$1"; }
@@ -512,9 +533,10 @@ case "$1" in
     rm -vf "${LOCK_STARTED}"
   ;;
   status)
-    SWAP_TOTAL=$(grep -oP 'SwapTotal:\s*\K[0-9]*' /proc/meminfo)
-    SWAP_FREE=$(grep -oP 'SwapFree:\s*\K[0-9]*' /proc/meminfo)
-    SWAP_USED=$(( (SWAP_TOTAL - SWAP_FREE) * 1024 ))
+    declare -a swap_stats
+    get_mem_stat_multi swap_stats SwapTotal SwapFree
+    SWAP_USED=$(( swap_stats[0] - swap_stats[1] ))
+    unset swap_stats
 
     if [ -d /sys/module/zswap ]; then
       echo Zswap:
