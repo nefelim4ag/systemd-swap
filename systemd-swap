@@ -232,11 +232,8 @@ case "$1" in
 
       for (( i = 0; i < zram_count; i++ )); do
         INFO "Zram: trying to initialize free device"
-        # zramctl is a external program -> return name of first free device
-        TMP=$(mktemp)
-        zramctl -f -a "${zram_alg}" -t "${zram_streams}" -s "${zram_size}" &> "${TMP}"
-        read -r OUTPUT < "${TMP}"
-        rm -f "${TMP}"
+        # zramctl is an external program -> return path to first free device
+        OUTPUT=$(zramctl -f -a "${zram_alg}" -t "${zram_streams}" -s "${zram_size}" 2>&1)
         case "${OUTPUT}" in
           *"failed to reset: Device or resource busy"*)
             snore 1
@@ -333,7 +330,7 @@ case "$1" in
 
         [ "$FSTYPE" = "btrfs" ] && YN "${swapfc_nocow}" && chattr +C "${file}"
         if [[ $FSTYPE = ext4 || $FSTYPE = ext3 || $FSTYPE = xfs || $FSTYPE = f2fs ]]; then
-          dd if=/dev/zero of="$file" bs=1M count=$(( $chunk_size / 1048576))
+          dd if=/dev/zero of="$file" status=none bs=1M count=$(( chunk_size / 1048576))
         else
           if YN ${swapfc_force_preallocated}; then
             # ext2/3 not support fallocate
