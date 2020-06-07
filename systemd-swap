@@ -21,9 +21,9 @@ write(){
   echo "${DATA}" > "${FILE}"
 }
 
-# Files with one byte data will use 1 page of ram in tmpfs,
+# files with one byte data will use one page of RAM in tmpfs,
 # i.e. 4KiB on x86_64
-# that a madness, store short string in symbol links
+# to avoid that, store short strings in symbolic links
 write_l(){
   { [ -z "$1" ] || [ -z "$2" ]; } && return
   DATA="$1" FILE="$2"
@@ -116,7 +116,8 @@ gen_swap_unit(){
   [ -n "${What}" ] || return 1
 
   What="$(realpath "${What}")"
-  Type="File" # Assume that a file by default
+  # assume it's a file by default
+  Type="File"
   if [ -b "${What}" ]; then
     Type="Block/Partition"
     [[ "${What}" =~ loop ]] && Type="File"
@@ -164,7 +165,7 @@ case "$1" in
 
     INFO "Load: ${CONFIG}"
     # shellcheck source=swap.conf
-    . "${CONFIG}" || ERRO "Problems while load of ${CONFIG}"
+    . "${CONFIG}" || ERRO "Error loading ${CONFIG}"
 
     declare -A CONFS
     for L_CONF in {/lib,/run,/etc}/systemd/swap.conf.d/*.conf; do
@@ -178,7 +179,7 @@ case "$1" in
       [[ ! ${BASE} ]] && continue
       L_CONF="${CONFS[${BASE}]}"
       # shellcheck source=swap.conf
-      . "${L_CONF}" || ERRO "Problems while load of ${L_CONF}"
+      . "${L_CONF}" || ERRO "Error loading ${L_CONF}"
     done
 
     zswap_enabled=${zswap_enabled:-0}
@@ -219,7 +220,7 @@ case "$1" in
       if [ ! -d "/sys/module/zram" ]; then
         INFO "Zram: not part of kernel, trying to find zram module"
         modprobe -n zram || ERRO "Zram: can't find zram module!"
-        # Wrapper, for handling zram initialization problems
+        # workaround for some zram initialization problems
         for (( i = 0; i < 10; i++ )); do
           [ -d "/sys/module/zram" ] && break
           modprobe zram
@@ -232,11 +233,8 @@ case "$1" in
 
       for (( i = 0; i < zram_count; i++ )); do
         INFO "Zram: trying to initialize free device"
-        # zramctl is a external program -> return name of first free device
-        TMP=$(mktemp)
-        zramctl -f -a "${zram_alg}" -t "${zram_streams}" -s "${zram_size}" &> "${TMP}"
-        read -r OUTPUT < "${TMP}"
-        rm -f "${TMP}"
+        # zramctl is an external program -> return path to first free device
+        OUTPUT=$(zramctl -f -a "${zram_alg}" -t "${zram_streams}" -s "${zram_size}" 2>&1)
         case "${OUTPUT}" in
           *"failed to reset: Device or resource busy"*)
             snore 1
@@ -245,7 +243,7 @@ case "$1" in
             WARN "Zram: zramctl can't find free device"
             INFO "Zram: using workaround hook for hot add"
             [ ! -f /sys/class/zram-control/hot_add ] && \
-              ERRO "Zram: this kernel does not support hot add zram device, please use 4.2+ kernels or see modinfo zram and make a modprobe rule"
+              ERRO "Zram: this kernel does not support hot adding zram devices, please use a 4.2+ kernel or see 'modinfo zram´ and create a modprobe rule"
             read -r NEW_ZRAM < /sys/class/zram-control/hot_add
             INFO "Zram: success: new device /dev/zram${NEW_ZRAM}"
           ;;
@@ -302,13 +300,13 @@ case "$1" in
       FSTYPE=$(get_fs_type "${swapfc_path}")
 
       if [ "$FSTYPE" = "btrfs" ]; then
-            # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
-            # if it doesn't, use the old swap through loop workaround
-            if [ "${KMAJOR}" -ge 5 ]; then
-                  swapfc_nocow=true
-            else
-                  FSTYPE="btrfs_old"
-            fi
+        # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
+        # if it doesn't, use the old swap through loop workaround
+        if [ "${KMAJOR}" -ge 5 ]; then
+              swapfc_nocow=true
+        else
+              FSTYPE="btrfs_old"
+        fi
       fi
 
       YN "${swapfc_force_use_loop}" && FSTYPE=btrfs_old
@@ -316,11 +314,10 @@ case "$1" in
 
       check_ENOSPC(){
         path="$1"
-        # Check free space
-        # For avoid problems on swap io + ENOSPC
+        # check free space for avoiding problems on swap io + ENOSPC
         FREE_BLOCKS=$(stat -f -c %f "${path}" )
         FREE_BYTES=$(( FREE_BLOCKS * BLOCK_SIZE ))
-        # also try leave some free space
+        # also try leaving some free space
         FREE_BYTES=$(( FREE_BYTES - chunk_size ))
         ((FREE_BYTES < chunk_size)) && return 0
         return 1
@@ -328,15 +325,14 @@ case "$1" in
 
       prepare_swapfile(){
         chunk_size="$1" file="$2"
-        touch "${file}"
-        chmod 0600 "${file}"
+        touch "${file}" && chmod 0600 "${file}"
 
         [ "$FSTYPE" = "btrfs" ] && YN "${swapfc_nocow}" && chattr +C "${file}"
         if [[ $FSTYPE = ext4 || $FSTYPE = ext3 || $FSTYPE = xfs || $FSTYPE = f2fs ]]; then
-          dd if=/dev/zero of="$file" bs=1M count=$(( $chunk_size / 1048576))
+          dd if=/dev/zero of="$file" status=none bs=1M count=$(( chunk_size / 1048576))
         else
           if YN ${swapfc_force_preallocated}; then
-            # ext2/3 not support fallocate
+            # ext2/3 does not support fallocate
             fallocate -l "${chunk_size}" "${file}" \
             || truncate -s "${chunk_size}" "${file}"
           else
@@ -351,9 +347,9 @@ case "$1" in
           else
             losetup -f --show --direct-io=off "${file}"
           fi
-          # loop uses file descriptor, the file still exists,
+          # loop uses a file descriptor - if the file still exists,
           # but does not have a path like O_TMPFILE
-          # When loop detaches a file, the file will be deleted.
+          # when loop detaches a file, the file will be deleted.
           rm "${file}"
         }
 
@@ -365,10 +361,8 @@ case "$1" in
             RET=$(losetup_w "${file}")
           ;;
           *)
-            # -z rewrite file second time
-            # By default shred gen random
-            # Speedup rewrite by rewrite
-            # one time with zeroes
+            # -z would result in two overwrites, so explicitly use
+            # /dev/zero as source for a quicker *single* iteration
             shred -n1 --random-source=/dev/zero "${file}"
           ;;
         esac
@@ -496,7 +490,7 @@ case "$1" in
 
     if [ -f "${WORK_DIR}/swapfc/.lock" ]; then
       rm -vf "${WORK_DIR}/swapfc/.lock"
-      snore 5 # Wait some time
+      snore 5
     fi
 
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
