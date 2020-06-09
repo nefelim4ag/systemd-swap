@@ -62,7 +62,7 @@ get_mem_stat() {
 
 get_fs_type(){ df "$1" --output=fstype | tail -n 1; }
 AMI_ROOT(){ [ "${UID}" == "0" ] || ERRO "Script must be run as root!"; }
-FIND_SWAP_UNITS(){ find /run/systemd/system/ /run/systemd/generator/ -type f -name "*.swap"; }
+FIND_SWAP_UNITS(){ find /run/systemd/{system/,generator/} -type f -name "*.swap"; }
 GET_WHAT_FROM_SWAP_UNIT(){ grep -oP 'What=\K.*' "$1"; }
 help(){
   echo "$0 start|stop|status"
