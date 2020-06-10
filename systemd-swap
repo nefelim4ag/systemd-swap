@@ -2,7 +2,12 @@
 
 set -o pipefail
 
+readonly DEBUG=0
+
 # Echo wrappers
+DEBUG(){ :; }
+((DEBUG == 1)) && DEBUG() { echo "DEBUG: $*";}
+
 INFO(){ echo "INFO: $*";}
 WARN(){ echo "WARN: $*";}
 ERRO(){ echo "ERRO: $*"; exit 1;}
@@ -80,11 +85,12 @@ snore(){
 
 # Global variables
 readonly RUN_SYSD="/run/systemd"
+readonly ETC_SYSD="/etc/systemd"
+readonly VEN_SYSD="/usr/lib/systemd"
+readonly ETC_CONFIG="${ETC_SYSD}/swap.conf"
 readonly NCPU=$(nproc)
 readonly RAM_SIZE=$(get_mem_stat MemTotal)
 readonly PAGE_SIZE=$(getconf PAGESIZE)
-readonly ETC_SYSD="/etc/systemd"
-readonly CONFIG="${ETC_SYSD}/swap.conf"
 readonly WORK_DIR="/run/systemd/swap"
 readonly LOCK_STARTED="${WORK_DIR}/.started"
 readonly ZSWAP_M="/sys/module/zswap"
@@ -148,8 +154,7 @@ gen_swap_unit(){
   echo "${UNIT_NAME}.swap"
 }
 
-# INIT
-
+# Init
 AMI_ROOT
 
 mkdir -p \
@@ -157,29 +162,45 @@ mkdir -p \
   "${RUN_SYSD}/system/local-fs.target.wants" \
   "${RUN_SYSD}/system/swap.target.wants"
 
+(( $# == 0 )) && set -- status
 case "$1" in
   start)
     [ -f "${LOCK_STARTED}" ] && ERRO "$0 already started"
     touch "${LOCK_STARTED}"
-
-    INFO "Load: ${CONFIG}"
-    # shellcheck source=swap.conf
-    . "${CONFIG}" || ERRO "Error loading ${CONFIG}"
-
-    declare -A CONFS
-    for L_CONF in {/lib,/run,/etc}/systemd/swap.conf.d/*.conf; do
-      [[ ! -r ${L_CONF} ]] && continue
-      BASE=$(basename "${L_CONF}")
-      [[ ${CONFS[${BASE}]} ]] && BASES=("${BASES[@]/${BASE}}")
-      CONFS["${BASE}"]="${L_CONF}"
-      BASES+=("${BASE}")
-    done
-    for BASE in "${BASES[@]}"; do
-      [[ ! ${BASE} ]] && continue
-      L_CONF="${CONFS[${BASE}]}"
-      # shellcheck source=swap.conf
-      . "${L_CONF}" || ERRO "Error loading ${L_CONF}"
-    done
+    load_config_fragments(){
+      # The main configuration file is read before any of the configuration
+      # directories, and has the lowest precedence; entries in a file in any configuration
+      # directory override entries in the single configuration file.
+      if [[ -f "$ETC_CONFIG" ]]; then
+        INFO "Load: ${ETC_CONFIG}"
+        # shellcheck source=swap.conf
+        . "${ETC_CONFIG}" || ERRO "Error loading ${ETC_CONFIG}"
+      fi
+      # Drop-in files in /etc take precedence over those in /run which
+      # in turn take precedence over those in /usr/lib.
+      # Multiple drop-in files with different names are applied in lexicographic order,
+      # regardless of which of the directories they reside in.
+      local -A A_CONF
+      for CONF in {"${VEN_SYSD}","${RUN_SYSD}","${ETC_SYSD}"}/swap.conf.d/*.conf; do
+        if [[ ! -r ${CONF} ]]; then
+          WARN "Permission denied reading: ${CONF}"
+          continue
+        fi
+        A_CONF[$(basename "${CONF}")]="${CONF}"
+        DEBUG "found ${CONF}"
+      done
+      DEBUG "Selected configuration artifacts: ${A_CONF[*]}"
+      # sort lexicographically
+      readarray -t o_frag < <(printf '%s\n' "${!A_CONF[@]}" | sort)
+      if [[ -n ${o_frag:-} ]]; then 
+        # and finally load it
+        for fragment in "${o_frag[@]}"; do
+          INFO "Load: ${A_CONF[$fragment]}"
+          source "${A_CONF[$fragment]}" || ERRO "Error loading ${A_CONF[$fragment]}"
+        done
+      fi
+    }
+    load_config_fragments
 
     zswap_enabled=${zswap_enabled:-0}
     if YN "${zswap_enabled}"; then
