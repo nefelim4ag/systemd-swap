@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
-set -o pipefail
+set -uo pipefail
 
-# echo wrappers
+# Echo wrappers
 INFO(){ echo "INFO: $*";}
 WARN(){ echo "WARN: $*";}
 ERRO(){ echo "ERRO: $*"; exit 1;}
 INFO_E(){ echo "INFO: $*"; exit 0;}
 
-# Helpers
+# Helper functions
 YN(){
   l="${1,,}"
   [[ "${l}" =~ (yes|y|1|true) ]] && return 0
@@ -21,9 +21,9 @@ write(){
   echo "${DATA}" > "${FILE}"
 }
 
-# files with one byte data will use one page of RAM in tmpfs,
-# i.e. 4KiB on x86_64
-# to avoid that, store short strings in symbolic links
+# Files with one byte data will use one page of RAM in tmpfs,
+# i.e. 4KiB on x86_64 - to avoid that, store short strings
+# in symbolic links
 write_l(){
   { [ -z "$1" ] || [ -z "$2" ]; } && return
   DATA="$1" FILE="$2"
@@ -38,7 +38,7 @@ read_l(){
   echo "${DATA}" | base64 -d
 }
 
-get_mem_stat_multi() {
+get_mem_stat_multi(){
   # expects name of output array as $1, followed by n wanted keys
   local -ar fields=("${@:2}")
   local -n outref="$1"
@@ -54,7 +54,7 @@ get_mem_stat_multi() {
   done < /proc/meminfo
 }
 
-get_mem_stat() {
+get_mem_stat(){
   local -a value
   get_mem_stat_multi value "$1"
   printf "%s" "${value[0]}"
@@ -64,6 +64,7 @@ get_fs_type(){ df "$1" --output=fstype | tail -n 1; }
 AMI_ROOT(){ [ "${UID}" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/{system/,generator/} -type f -name "*.swap"; }
 GET_WHAT_FROM_SWAP_UNIT(){ grep -oP 'What=\K.*' "$1"; }
+
 help(){
   echo "$0 start|stop|status"
   echo "   start  - init daemon"
@@ -71,14 +72,13 @@ help(){
   echo "   status - show some swap status info"
 }
 
-snore()
-{
+snore(){
     local IFS
     [[ -n "${_snore_fd:-}" ]] || exec {_snore_fd}<> <(:)
     read ${1:+-t "$1"} -u $_snore_fd || :
 }
 
-# Global vars
+# Global variables
 readonly RUN_SYSD="/run/systemd"
 readonly NCPU=$(nproc)
 readonly RAM_SIZE=$(get_mem_stat MemTotal)
@@ -86,15 +86,14 @@ readonly PAGE_SIZE=$(getconf PAGESIZE)
 readonly ETC_SYSD="/etc/systemd"
 readonly CONFIG="${ETC_SYSD}/swap.conf"
 readonly WORK_DIR="/run/systemd/swap"
-
 readonly LOCK_STARTED="${WORK_DIR}/.started"
 readonly ZSWAP_M="/sys/module/zswap"
 readonly ZSWAP_M_P="/sys/module/zswap/parameters"
 
-readonly KMAJOR=$(uname -r | cut -d'.' -f1)
-#readonly KMINOR=$(uname -r | cut -d'.' -f2)
+# shellcheck disable=SC2034
+IFS=. read -r KMAJOR KMINOR _ <<< "$(uname -r)"
 
-# swap unit generator
+# Swap unit generator
 gen_swap_unit(){
   export What Priority Options Tag Type
   for i in "$@"; do
@@ -292,7 +291,7 @@ case "$1" in
 
       to_bytes(){ numfmt --to=none --from=iec "$1"; }
 
-      # Must exists before stat()
+      # must exists before stat()
       mkdir -p "${swapfc_path}"
 
       chunk_size=$(to_bytes "${chunk_size}")
@@ -302,7 +301,7 @@ case "$1" in
       if [ "$FSTYPE" = "btrfs" ]; then
         # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
         # if it doesn't, use the old swap through loop workaround
-        if [ "${KMAJOR}" -ge 5 ]; then
+        if (( KMAJOR >= 5 )); then
               swapfc_nocow=true
         else
               FSTYPE="btrfs_old"
@@ -319,7 +318,7 @@ case "$1" in
         FREE_BYTES=$(( FREE_BLOCKS * BLOCK_SIZE ))
         # also try leaving some free space
         FREE_BYTES=$(( FREE_BYTES - chunk_size ))
-        ((FREE_BYTES < chunk_size)) && return 0
+        (( FREE_BYTES < chunk_size )) && return 0
         return 1
       }
 
@@ -379,19 +378,19 @@ case "$1" in
         "${WORK_DIR}/swapfc/"
       touch "${WORK_DIR}/swapfc/.lock"
       {
-        allocated=0
-        free_threshold_up=${swapfc_free_swap_perc}
-        free_threshold_down=$(( swapfc_free_swap_perc + 40 ))
+        declare -i allocated=0
+        readonly free_threshold_up=${swapfc_free_swap_perc}
+        readonly free_threshold_down=$(( swapfc_free_swap_perc + 40 ))
         INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - free_threshold_up) / 104857600)) MiB memory usage"
         while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
-          if [ $allocated -eq 0 ]; then
+          if (( allocated == 0 )); then
             curr_free_ram_perc=$(get_free_ram_perc)
-            if (( curr_free_ram_perc < free_threshold_up)); then
+            if (( curr_free_ram_perc < free_threshold_up )); then
               if check_ENOSPC "${swapfc_path}"; then
                 WARN "swapFC: ENOSPC"
                 continue
               fi
-              allocated=$(( allocated + 1 ))
+              (( ++allocated ))
               INFO "swapFC: free ram: ${curr_free_ram_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
               swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
               mkswap -L SWAP_${FSTYPE}_${allocated} "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
@@ -416,7 +415,7 @@ case "$1" in
               WARN "swapFC: ENOSPC"
               continue
             fi
-            allocated=$(( allocated + 1 ))
+            (( ++allocated ))
             INFO "swapFC: free swap: ${curr_free_swap_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
             swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
             mkswap -L SWAP_${FSTYPE}_${allocated} "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
@@ -443,7 +442,7 @@ case "$1" in
                 [ -f "${DEV}" ] && rm -f "${DEV}"
               fi
             done
-            allocated=$(( allocated - 1 ))
+            (( --allocated ))
           fi
         done
       } &
@@ -463,7 +462,7 @@ case "$1" in
       done
 
       INFO "swapD: searching swap devices"
-      mkdir -p ${WORK_DIR}/swapd/
+      mkdir -p "${WORK_DIR}/swapd/"
       for device in $(blkid -t TYPE=swap -o device | grep -vE '(zram|loop)'); do
         for used_device in $(swapon --show=NAME --noheadings); do
           [ "${device}" == "${used_device}" ] && unset device
