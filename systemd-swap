@@ -6,7 +6,7 @@ readonly DEBUG=0
 
 # Echo wrappers
 DEBUG(){ :; }
-((DEBUG == 1)) && DEBUG() { echo "DEBUG: $*";}
+(( DEBUG == 1 )) && DEBUG() { echo "DEBUG: $*";}
 
 INFO(){ echo "INFO: $*";}
 WARN(){ echo "WARN: $*";}
@@ -182,7 +182,10 @@ case "$1" in
       # regardless of which of the directories they reside in.
       local -A A_CONF
       for CONF in {"${VEN_SYSD}","${RUN_SYSD}","${ETC_SYSD}"}/swap.conf.d/*.conf; do
-        [[ ! -r ${CONF} ]] && continue
+        if [[ ! -r ${CONF} ]]; then
+          [[ -f ${CONF} ]] && WARN "Permission denied reading: ${CONF}"
+          continue
+        fi
         A_CONF[$(basename "${CONF}")]="${CONF}"
         DEBUG "found ${CONF}"
       done
