@@ -21,24 +21,25 @@ Additional terms:
 /usr/bin/systemd-swap
 ```
 
-## Please don't forget to enable with
+## Please don't forget to enable and start with
 
 ```shell
-sudo systemctl enable systemd-swap
+sudo systemctl enable --now systemd-swap
 ```
 
 ## Install
 
 - <img src="https://www.monitorix.org/imgs/archlinux.png" weight="16" height="16"> **Arch**: in the [community](https://www.archlinux.org/packages/community/any/systemd-swap/).
-- <img src="https://www.monitorix.org/imgs/debian.png" weight="16" height="16"> **Debian**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh) in git repo
+
+- <img src="https://www.monitorix.org/imgs/debian.png" weight="16" height="16"> **Debian**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh)
 
   ```shell
   git clone https://github.com/Nefelim4ag/systemd-swap.git
   ./systemd-swap/package.sh debian
-  sudo dpkg -i ././systemd-swap/systemd-swap_*_all.deb
+  sudo apt install ./systemd-swap/systemd-swap_*_all.deb
   ```
 
-- <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh)
+- <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora**
 
   ```shell
   git clone https://github.com/Nefelim4ag/systemd-swap.git
@@ -46,12 +47,20 @@ sudo systemctl enable systemd-swap
   sudo dnf install ./systemd-swap/systemd-swap-*noarch.rpm
   ```
 
-- <img src="https://www.monitorix.org/imgs/centos.png" weight="16" height="16"> **CentOS**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh)
+- <img src="https://www.monitorix.org/imgs/centos.png" weight="16" height="16"> **CentOS7**:
 
   ```shell
   git clone https://github.com/Nefelim4ag/systemd-swap.git
   ./systemd-swap/package.sh centos
   sudo yum install ./systemd-swap/systemd-swap-*noarch.rpm
+  ```
+
+- <img src="https://www.monitorix.org/imgs/centos.png" weight="16" height="16"> **CentOS8**:
+
+  ```shell
+  git clone https://github.com/Nefelim4ag/systemd-swap.git
+  ./systemd-swap/package.sh centos
+  sudo dnf install ./systemd-swap/systemd-swap-*noarch.rpm
   ```
 
 - **Manual**
@@ -63,27 +72,17 @@ sudo systemctl enable systemd-swap
 
 ## About configuration
 
-**Q**: WTF?! Why do you merge swapFC and swapFU?\
-**A**: It simplifies testing of swapFC code and makes the code more generic.
-
-**Q**: How can I migrate swapFU config from 3.X to 4.X?\
-**A**: Most of the switches are the same, to get configuration like swapFU from swapFC, set `swapfc_max_count` to `1` and `swapfc_chunk_size` to size of swapFU.
-
 **Q**: Do we need to activate both zram and zswap?\
-**A**: Nope, it's useless, as zram is a compressed RAM DISK, but zswap is a compressed _"writeback"_ CACHE on swap file/disk.
+**A**: Nope, it's useless, as zram is a compressed RAM DISK, but zswap is a compressed _"writeback"_ CACHE on swap file/disk. Also having both activated can lead to inverse LRU as noted [here](https://askubuntu.com/questions/471912/zram-vs-zswap-vs-zcache-ultimate-guide-when-to-use-which-one/472227#472227)
 
 **Q**: Do I need to use `swapfc_force_use_loop` on swapFC?\
 **A**: Nope, as you wish really, native swapfile should work faster and it's safer in OOM condition in comparison to loop backed scenario.
 
 **Q**: When would we want a certain configuration?\
-**A**: In most cases (Notebook, Desktop, Server) it's enough to enable zswap + swapfc (on server tuning of swapfc can be needed).
-If you use SSD and care about flash memory wear, use only ZRam.
-
-**Q**: Where is the swap file located?\
-**A**: Read carefully swap.conf
+**A**: In most cases (Notebook, Desktop, Server) it's enough to enable zswap + swapfc (on server tuning of swapfc can be needed). If you use a SSD and care about flash memory wear, use only ZRam.
 
 **Q**: Can we use this to enable hibernation?\
-**A**: Nope as hibernation wants a persistent fs blocks and wants access to swap data directly from disk, this will not work on: _zram_, _swapfu_, _swapfc_ (without some magic of course).
+**A**: Nope as hibernation wants a persistent fs blocks and wants access to swap data directly from disk, this will not work on: _swapfc_ (without some magic of course, see [#85](https://github.com/Nefelim4ag/systemd-swap/issues/85)).
 
 ## Note
 
@@ -94,27 +93,12 @@ If you use SSD and care about flash memory wear, use only ZRam.
   options zram max_devices=32
   ```
 
-## Switch On Systemd Swap
+## Switch on systemd-swap:s automatic swap management
 
-- Check your configuration:
-
-  ```shell
-  cat /proc/sys/vm/swappiness
-  cat /proc/sys/vm/vfs_cache_pressure
-  ```
-
-- Recommended configuration for Desktop:
+- Enable swapfc if wanted (note, you should **never** use zram and zswap at the same time, read more [here](https://www.google.com))
 
   ```shell
-  echo vm.swappiness=5 | sudo tee -a /etc/sysctl.d/99-sysctl.conf
-  echo vm.vfs_cache_pressure=50 | sudo tee -a /etc/sysctl.d/99-sysctl.conf
-  sudo sysctl -p /etc/sysctl.d/99-sysctl.conf
-  ```
-
-- Check configuration after Systemd Swap is installed:
-
-  ```shell
-  nano /etc/systemd/swap.conf
+  vim /etc/systemd/swap.conf
   ```
 
   ```ini
@@ -123,7 +107,7 @@ If you use SSD and care about flash memory wear, use only ZRam.
   swapfc_enabled=1
   ```
 
-- Stop your swap:
+- Stop any external swap:
 
   ```shell
   sudo swapoff -a
@@ -132,7 +116,7 @@ If you use SSD and care about flash memory wear, use only ZRam.
 - Remove swap entry from fstab:
 
   ```shell
-  nano /etc/fstab
+  vim /etc/fstab
   ```
 
 - Remove your swap
@@ -141,7 +125,7 @@ If you use SSD and care about flash memory wear, use only ZRam.
   # For Ubuntu
   sudo rm -f /swapfile
 
-  # For Centos 7
+  # For Centos 7 (if using a swap partition and lvm)
   lvremove -Ay /dev/centos/swap
   lvextend -l +100%FREE centos/root
   ```
@@ -150,14 +134,14 @@ If you use SSD and care about flash memory wear, use only ZRam.
 
   ```shell
   # For Ubuntu remove resume* in grub
-  nano /etc/default/grub
+  vim /etc/default/grub
 
   # For Centos 7 remove rd.lvm.lv=centos/swap*
-  nano /etc/default/grub
+  vim /etc/default/grub
 
   # For Manjaro remove resume* in grub & mkinitcpio
-  nano /etc/default/grub
-  nano /etc/mkinitcpio.conf
+  vim /etc/default/grub
+  vim /etc/mkinitcpio.conf
   ```
 
   ```shell
