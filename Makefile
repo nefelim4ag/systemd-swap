@@ -8,7 +8,7 @@ ETCD_T := $(PREFIX)/etc/systemd/swap.conf.d/
 
 BIN_T  := $(PREFIX)/usr/bin/systemd-swap
 SVC_T  := $(PREFIX)/lib/systemd/system/systemd-swap.service
-CNF_T  := $(PREFIX)/etc/systemd/swap.conf
+CNF_T  := $(PREFIX)/usr/share/systemd-swap/swap.conf
 
 
 $(LIB_T):
@@ -27,7 +27,7 @@ $(SVC_T): systemd-swap.service
 	install -Dm644 $< $@
 
 $(CNF_T): swap.conf
-	install -bDm644 -S .old $< $@
+	install -bDm644 $< $@
 
 files: $(BIN_T) $(SVC_T) $(CNF_T)
 
@@ -42,6 +42,7 @@ uninstall:
 	@rm -v $(SVC_T)
 	@rm -v $(CNF_T)
 	rm -r $(PREFIX)/var/lib/systemd-swap
+	rmdir $(PREFIX)/usr/share/systemd-swap
 
 deb: ## Create debian package
 deb: package.sh

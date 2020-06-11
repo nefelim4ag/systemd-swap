@@ -87,6 +87,7 @@ snore(){
 readonly RUN_SYSD="/run/systemd"
 readonly ETC_SYSD="/etc/systemd"
 readonly VEN_SYSD="/usr/lib/systemd"
+readonly DEF_CONFIG="/usr/share/systemd-swap/swap.conf"
 readonly ETC_CONFIG="${ETC_SYSD}/swap.conf"
 readonly NCPU=$(nproc)
 readonly RAM_SIZE=$(get_mem_stat MemTotal)
@@ -166,13 +167,16 @@ case "$1" in
     [ -f "${LOCK_STARTED}" ] && ERRO "$0 already started"
     touch "${LOCK_STARTED}"
 
+    # load default values
+    . "${DEF_CONFIG}" || ERRO "Error loading ${ETC_CONFIG}"
+
     load_config_fragments(){
       # config precedence follows systemd scheme:
       # etc > run > lib > swap.conf
       if [[ -f "$ETC_CONFIG" ]]; then
         INFO "Load: ${ETC_CONFIG}"
         # shellcheck source=swap.conf
-        . "${ETC_CONFIG}" || ERRO "Error loading ${ETC_CONFIG}"
+        . "${ETC_CONFIG}" || WARN "Could not load ${ETC_CONFIG}"
       fi
       local -A a_conf
       for conf in {"${VEN_SYSD}","${RUN_SYSD}","${ETC_SYSD}"}/swap.conf.d/*.conf; do
