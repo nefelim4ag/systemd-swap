@@ -168,7 +168,7 @@ case "$1" in
     touch "${LOCK_STARTED}"
 
     # load default values
-    . "${DEF_CONFIG}" || ERRO "Error loading ${ETC_CONFIG}"
+    . "${DEF_CONFIG}" || ERRO "Error loading ${DEF_CONFIG}"
 
     load_config_fragments(){
       # config precedence follows systemd scheme:
