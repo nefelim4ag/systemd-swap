@@ -315,8 +315,8 @@ case "$1" in
 
     swapfc_enabled=${swapfc_enabled:-0}
     if YN "${swapfc_enabled}"; then
-      chunk_size=${swapfc_chunk_size:-"512M"}
-      swapfc_max_count=${swapfc_max_count:-"8"}
+      chunk_size=${swapfc_chunk_size:-"256M"}
+      swapfc_max_count=${swapfc_max_count:-"32"}
       swapfc_path=${swapfc_path:-"/var/lib/systemd-swap/swapfc/"}
       swapfc_frequency=${swapfc_frequency:-"1"}
       swapfc_force_use_loop=${swapfc_force_use_loop:-"0"}
@@ -408,6 +408,38 @@ case "$1" in
         swapfc_max_count=1
       fi
 
+      create_swapfile(){
+        if check_ENOSPC "${swapfc_path}"; then
+          WARN "swapFC: ENOSPC"
+          continue
+        fi
+        (( ++allocated ))
+        INFO "swapFC: free ram: ${curr_free_ram_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
+        swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
+        mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
+        if YN ${swapfc_force_preallocated}; then
+          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
+        else
+          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Options=discard Tag="swapfc_${allocated}")
+        fi
+        systemctl start "${UNIT_NAME}"
+        [ -b "${swapfile}" ] && losetup -d "${swapfile}"
+      }
+
+      destroy_swapfile(){
+        INFO "swapFC: free swap: ${curr_free_swap_perc} > ${free_threshold_down} - freeup chunk: ${allocated}"
+        FIND_SWAP_UNITS | while read -r UNIT_PATH; do
+          if grep -q "swapfc_${allocated}" "${UNIT_PATH}"; then
+            DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
+            UNIT_NAME=$(basename "${UNIT_PATH}")
+            systemctl stop "${UNIT_NAME}" || swapoff "${DEV}"
+            rm -vf "${UNIT_PATH}"
+            [ -f "${DEV}" ] && rm -f "${DEV}"
+          fi
+        done
+        (( --allocated ))
+      }
+
       mkdir -p \
         "${swapfc_path}" \
         "${WORK_DIR}/swapfc/"
@@ -420,21 +452,7 @@ case "$1" in
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
           if (( curr_free_ram_perc < free_threshold_up )); then
-            if check_ENOSPC "${swapfc_path}"; then
-              WARN "swapFC: ENOSPC"
-              continue
-            fi
-            (( ++allocated ))
-            INFO "swapFC: free ram: ${curr_free_ram_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
-            swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
-            mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
-            if YN ${swapfc_force_preallocated}; then
-              UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
-            else
-              UNIT_NAME=$(gen_swap_unit What="${swapfile}" Options=discard Tag="swapfc_${allocated}")
-            fi
-            systemctl start "${UNIT_NAME}"
-            [ -b "${swapfile}" ] && losetup -d "${swapfile}"
+            create_swapfile
             continue
           else
             continue
@@ -442,36 +460,10 @@ case "$1" in
         fi
         curr_free_swap_perc=$(get_free_swap_perc)
         if (( curr_free_swap_perc < free_threshold_up )) && (( allocated < swapfc_max_count )); then
-          if check_ENOSPC "${swapfc_path}"; then
-            WARN "swapFC: ENOSPC"
-            continue
-          fi
-          (( ++allocated ))
-          INFO "swapFC: free swap: ${curr_free_swap_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
-          swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
-          mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
-          if YN ${swapfc_force_preallocated}; then
-            UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
-          else
-            UNIT_NAME=$(gen_swap_unit What="${swapfile}" Options=discard Tag="swapfc_${allocated}")
-          fi
-          systemctl start "${UNIT_NAME}"
-          [ -b "${swapfile}" ] && losetup -d "${swapfile}"
+          create_swapfile
         fi
         (( allocated <= 2 )) && continue
-        if (( curr_free_swap_perc > free_threshold_down )); then
-          INFO "swapFC: free swap: ${curr_free_swap_perc} > ${free_threshold_down} - freeup chunk: ${allocated}"
-          FIND_SWAP_UNITS | while read -r UNIT_PATH; do
-            if grep -q "swapfc_${allocated}" "${UNIT_PATH}"; then
-              DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
-              UNIT_NAME=$(basename "${UNIT_PATH}")
-              systemctl stop "${UNIT_NAME}" || swapoff "${DEV}"
-              rm -vf "${UNIT_PATH}"
-              [ -f "${DEV}" ] && rm -f "${DEV}"
-            fi
-          done
-          (( --allocated ))
-        fi
+        (( curr_free_swap_perc > free_threshold_down )) && destroy_swapfile
       done
     fi
   ;;
