@@ -28,7 +28,7 @@ $(DFL_T): swap-default.conf
 $(CNF_T): swap.conf
 	install -bDm644 -S .old $< $@
 
-files: $(BIN_T) $(SVC_T) $(DFL_T)
+files: $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T)
 
 
 install: ## Install systemd-swap
