@@ -172,7 +172,7 @@ case "$1" in
 
     load_config_fragments(){
       # config precedence follows systemd scheme:
-      # etc > run > lib > swap.conf
+      # etc > run > lib for all fragments > /etc/systemd/swap.conf
       if [[ -f "$ETC_CONFIG" ]]; then
         INFO "Load: ${ETC_CONFIG}"
         # shellcheck source=swap.conf
