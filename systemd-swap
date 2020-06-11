@@ -147,9 +147,7 @@ gen_swap_unit(){
 
   ln -srf "${UNIT_PATH}" "${RUN_SYSD}/system/swap.target.wants"
 
-  if [[ "${Type}" == "File" ]]; then
-    ln -srf "${UNIT_PATH}" "${RUN_SYSD}/system/local-fs.target.wants"
-  fi
+  [[ "${Type}" == "File" ]] && ln -srf "${UNIT_PATH}" "${RUN_SYSD}/system/local-fs.target.wants"
 
   echo "${UNIT_NAME}.swap"
 }
@@ -322,11 +320,7 @@ case "$1" in
       if [ "$FSTYPE" = "btrfs" ]; then
         # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
         # if it doesn't, use the old swap through loop workaround
-        if (( KMAJOR >= 5 )); then
-              swapfc_nocow=true
-        else
-              FSTYPE="btrfs_old"
-        fi
+        (( KMAJOR >= 5 )) && swapfc_nocow=true || FSTYPE="btrfs_old"
       fi
 
       YN "${swapfc_force_use_loop}" && FSTYPE=btrfs_old
@@ -403,7 +397,7 @@ case "$1" in
               (( ++allocated ))
               INFO "swapFC: free ram: ${curr_free_ram_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
               swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
-              mkswap -L SWAP_${FSTYPE}_${allocated} "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
+              mkswap -L SWAP_${FSTYPE}_"${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
               if YN ${swapfc_force_preallocated}; then
                 UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
               else
@@ -411,9 +405,7 @@ case "$1" in
               fi
               systemctl daemon-reload
               systemctl start "${UNIT_NAME}"
-              if [ -b "${swapfile}" ]; then
-                losetup -d "${swapfile}"
-              fi
+              [ -b "${swapfile}" ] && losetup -d "${swapfile}"
               continue
             else
               continue
@@ -428,7 +420,7 @@ case "$1" in
             (( ++allocated ))
             INFO "swapFC: free swap: ${curr_free_swap_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
             swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
-            mkswap -L SWAP_${FSTYPE}_${allocated} "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
+            mkswap -L SWAP_${FSTYPE}_"${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
             if YN ${swapfc_force_preallocated}; then
               UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
             else
@@ -436,15 +428,13 @@ case "$1" in
             fi
             systemctl daemon-reload
             systemctl start "${UNIT_NAME}"
-            if [ -b "${swapfile}" ]; then
-              losetup -d "${swapfile}"
-            fi
+            [ -b "${swapfile}" ] && losetup -d "${swapfile}"
           fi
           (( allocated <= 2 )) && continue
           if (( curr_free_swap_perc > free_threshold_down )); then
             INFO "swapFC: free swap: ${curr_free_swap_perc} > ${free_threshold_down} - freeup chunk: ${allocated}"
             FIND_SWAP_UNITS | while read -r UNIT_PATH; do
-              if grep -q swapfc_${allocated} "${UNIT_PATH}"; then
+              if grep -q swapfc_"${allocated}" "${UNIT_PATH}"; then
                 DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
                 UNIT_NAME=$(basename "${UNIT_PATH}")
                 systemctl stop "${UNIT_NAME}" || swapoff "${DEV}"
