@@ -166,18 +166,13 @@ case "$1" in
     [ -f "${LOCK_STARTED}" ] && ERRO "$0 already started"
     touch "${LOCK_STARTED}"
     load_config_fragments(){
-      # The main configuration file is read before any of the configuration
-      # directories, and has the lowest precedence; entries in a file in any configuration
-      # directory override entries in the single configuration file.
+      # config precedence follows systemd scheme:
+      # etc > run > lib > swap.conf
       if [[ -f "$ETC_CONFIG" ]]; then
         INFO "Load: ${ETC_CONFIG}"
         # shellcheck source=swap.conf
         . "${ETC_CONFIG}" || ERRO "Error loading ${ETC_CONFIG}"
       fi
-      # Drop-in files in /etc take precedence over those in /run which
-      # in turn take precedence over those in /usr/lib.
-      # Multiple drop-in files with different names are applied in lexicographic order,
-      # regardless of which of the directories they reside in.
       local -A A_CONF
       for CONF in {"${VEN_SYSD}","${RUN_SYSD}","${ETC_SYSD}"}/swap.conf.d/*.conf; do
         if [[ ! -r ${CONF} || -d ${CONF} ]]; then
