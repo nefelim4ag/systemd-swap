@@ -582,3 +582,5 @@ case "$1" in
     help
   ;;
 esac
+
+exit 0
