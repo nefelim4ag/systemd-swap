@@ -1,10 +1,5 @@
 [Unit]
 Description=Manage swap spaces on zram, files and partitions.
-After=local-fs.target
-RequiresMountsFor=/
-RequiresMountsFor=/run
-RequiresMountsFor=/sys
-RequiresMountsFor=/var
 
 [Service]
 Type=forking
@@ -31,4 +26,4 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 SystemCallFilter=@system-service @swap @module
 
 [Install]
-WantedBy=local-fs.target
+WantedBy=sysinit.target
