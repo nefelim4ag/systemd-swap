@@ -446,7 +446,7 @@ case "$1" in
       touch "${WORK_DIR}/swapfc/.lock"
       declare -i allocated=0
       readonly free_threshold_up=${swapfc_free_swap_perc}
-      readonly free_threshold_down=$(( swapfc_free_swap_perc + 40 ))
+      readonly free_threshold_down=${swapfc_remove_free_swap_perc}
       INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - free_threshold_up) / 104857600)) MiB memory usage"
       while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
         if (( allocated == 0 )); then
