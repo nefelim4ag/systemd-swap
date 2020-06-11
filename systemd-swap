@@ -165,6 +165,7 @@ case "$1" in
   start)
     [ -f "${LOCK_STARTED}" ] && ERRO "$0 already started"
     touch "${LOCK_STARTED}"
+
     load_config_fragments(){
       # config precedence follows systemd scheme:
       # etc > run > lib > swap.conf
@@ -173,23 +174,23 @@ case "$1" in
         # shellcheck source=swap.conf
         . "${ETC_CONFIG}" || ERRO "Error loading ${ETC_CONFIG}"
       fi
-      local -A A_CONF
-      for CONF in {"${VEN_SYSD}","${RUN_SYSD}","${ETC_SYSD}"}/swap.conf.d/*.conf; do
-        if [[ ! -r ${CONF} || -d ${CONF} ]]; then
-          [[ -f ${CONF} ]] && WARN "Permission denied reading: ${CONF}"
+      local -A a_conf
+      for conf in {"${VEN_SYSD}","${RUN_SYSD}","${ETC_SYSD}"}/swap.conf.d/*.conf; do
+        if [[ ! -r ${conf} || -d ${conf} ]]; then
+          [[ -f ${conf} ]] && WARN "Permission denied reading: ${conf}"
           continue
         fi
-        A_CONF[$(basename "${CONF}")]="${CONF}"
-        DEBUG "found ${CONF}"
+        a_conf[$(basename "${conf}")]="${conf}"
+        DEBUG "found ${conf}"
       done
-      DEBUG "Selected configuration artifacts: ${A_CONF[*]}"
+      DEBUG "Selected configuration artifacts: ${a_conf[*]}"
       # sort lexicographically
-      readarray -t o_frag < <(printf '%s\n' "${!A_CONF[@]}" | sort)
-      if [[ -n ${o_frag:-} ]]; then 
+      readarray -t skeys < <(printf '%s\n' "${!a_conf[@]}" | sort)
+      if [[ -n ${skeys:-} ]]; then 
         # and finally load it
-        for fragment in "${o_frag[@]}"; do
-          INFO "Load: ${A_CONF[$fragment]}"
-          source "${A_CONF[$fragment]}" || ERRO "Error loading ${A_CONF[$fragment]}"
+        for fragment in "${skeys[@]}"; do
+          INFO "Load: ${a_conf[$fragment]}"
+          . "${a_conf[$fragment]}" || ERRO "Error loading ${a_conf[$fragment]}"
         done
       fi
     }
@@ -418,7 +419,7 @@ case "$1" in
             (( ++allocated ))
             INFO "swapFC: free ram: ${curr_free_ram_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
             swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
-            mkswap -L SWAP_${FSTYPE}_"${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
+            mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
             if YN ${swapfc_force_preallocated}; then
               UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
             else
@@ -440,7 +441,7 @@ case "$1" in
           (( ++allocated ))
           INFO "swapFC: free swap: ${curr_free_swap_perc} < ${free_threshold_up} - allocate chunk: ${allocated}"
           swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
-          mkswap -L SWAP_${FSTYPE}_"${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
+          mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
           if YN ${swapfc_force_preallocated}; then
             UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
           else
@@ -453,7 +454,7 @@ case "$1" in
         if (( curr_free_swap_perc > free_threshold_down )); then
           INFO "swapFC: free swap: ${curr_free_swap_perc} > ${free_threshold_down} - freeup chunk: ${allocated}"
           FIND_SWAP_UNITS | while read -r UNIT_PATH; do
-            if grep -q swapfc_"${allocated}" "${UNIT_PATH}"; then
+            if grep -q "swapfc_${allocated}" "${UNIT_PATH}"; then
               DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
               UNIT_NAME=$(basename "${UNIT_PATH}")
               systemctl stop "${UNIT_NAME}" || swapoff "${DEV}"
