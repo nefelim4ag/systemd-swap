@@ -374,18 +374,7 @@ case "$1" in
         }
 
         RET="${file}"
-        case "${FSTYPE}" in
-          ext2|ext3|ext4|btrfs|f2fs|xfs)
-          ;;
-          btrfs_old)
-            RET=$(losetup_w "${file}")
-          ;;
-          *)
-            # -z would result in two overwrites, so explicitly use
-            # /dev/zero as source for a quicker *single* iteration
-            shred -n1 --random-source=/dev/zero "${file}"
-          ;;
-        esac
+        [[ "${FSTYPE}" == "btrfs_old" ]] && RET=$(losetup_w "${file}")
         echo "${RET}"
       }
 
