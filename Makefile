@@ -4,8 +4,6 @@ FEDORA_VERSION ?= f32
 default:  help
 
 LIB_T  := $(PREFIX)/var/lib/systemd-swap
-ETCD_T := $(PREFIX)/etc/systemd/swap.conf.d/
-
 BIN_T  := $(PREFIX)/usr/bin/systemd-swap
 SVC_T  := $(PREFIX)/lib/systemd/system/systemd-swap.service
 CNF_T  := $(PREFIX)/usr/share/systemd-swap/swap.conf
@@ -14,10 +12,7 @@ CNF_T  := $(PREFIX)/usr/share/systemd-swap/swap.conf
 $(LIB_T):
 	mkdir -p $@
 
-$(ETCD_T):
-	mkdir -p $@
-
-dirs: $(LIB_T) $(ETCD_T)
+dirs: $(LIB_T)
 
 
 $(BIN_T): systemd-swap
