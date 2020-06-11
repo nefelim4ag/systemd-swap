@@ -7,7 +7,7 @@ RequiresMountsFor=/sys
 RequiresMountsFor=/var
 
 [Service]
-RemainAfterExit=yes
+Type=forking
 ExecStart=/usr/bin/systemd-swap start
 ExecStop=/usr/bin/systemd-swap stop
 TimeoutStopSec=600
