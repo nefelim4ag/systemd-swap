@@ -2,7 +2,6 @@
 Description=Manage swap spaces on zram, files and partitions.
 
 [Service]
-RemainAfterExit=yes
 ExecStart=/usr/bin/systemd-swap start
 ExecStop=/usr/bin/systemd-swap stop
 TimeoutStopSec=600
