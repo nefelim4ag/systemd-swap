@@ -6,7 +6,8 @@ default:  help
 LIB_T  := $(PREFIX)/var/lib/systemd-swap
 BIN_T  := $(PREFIX)/usr/bin/systemd-swap
 SVC_T  := $(PREFIX)/lib/systemd/system/systemd-swap.service
-CNF_T  := $(PREFIX)/usr/share/systemd-swap/swap.conf
+DFL_T  := $(PREFIX)/usr/share/systemd-swap/swap-default.conf
+CNF_T  := $(PREFIX)/etc/systemd/swap.conf
 
 
 $(LIB_T):
@@ -21,10 +22,13 @@ $(BIN_T): systemd-swap
 $(SVC_T): systemd-swap.service
 	install -Dm644 $< $@
 
-$(CNF_T): swap.conf
+$(DFL_T): swap-default.conf
 	install -bDm644 $< $@
 
-files: $(BIN_T) $(SVC_T) $(CNF_T)
+$(CNF_T): swap.conf
+	install -bDm644 -S .old $< $@
+
+files: $(BIN_T) $(SVC_T) $(DFL_T)
 
 
 install: ## Install systemd-swap
@@ -35,6 +39,7 @@ uninstall:
 	test ! -f /run/systemd/swap/swap.conf
 	@rm -v $(BIN_T)
 	@rm -v $(SVC_T)
+	@rm -v $(DFL_T)
 	@rm -v $(CNF_T)
 	rm -r $(PREFIX)/var/lib/systemd-swap
 	rmdir $(PREFIX)/usr/share/systemd-swap

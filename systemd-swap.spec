@@ -12,6 +12,7 @@ BuildArch: noarch
 
 Source1: swap.conf
 Source2: systemd-swap.service
+Source3: swap-default.conf
 
 Requires: util-linux
 

@@ -87,7 +87,7 @@ snore(){
 readonly RUN_SYSD="/run/systemd"
 readonly ETC_SYSD="/etc/systemd"
 readonly VEN_SYSD="/usr/lib/systemd"
-readonly DEF_CONFIG="/usr/share/systemd-swap/swap.conf"
+readonly DEF_CONFIG="/usr/share/systemd-swap/swap-default.conf"
 readonly ETC_CONFIG="${ETC_SYSD}/swap.conf"
 readonly NCPU=$(nproc)
 readonly RAM_SIZE=$(get_mem_stat MemTotal)
