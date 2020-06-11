@@ -200,6 +200,10 @@ case "$1" in
     }
     load_config_fragments
 
+    if YN "${zswap_enabled}" && YN "$zram_enabled}"; then
+    WARN "Having zswap and zram enabled at the same time can lead to LRU inversion and is strongly recommended against"
+    fi
+
     zswap_enabled=${zswap_enabled:-0}
     if YN "${zswap_enabled}"; then
       [ ! -d ${ZSWAP_M} ] && ERRO "Zswap - not supported on current kernel"
