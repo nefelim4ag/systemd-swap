@@ -30,8 +30,8 @@ rm -rf %{buildroot}/
 %files
 %defattr(-,root,root,-)
 %{_bindir}/*
-%{_sysconfdir}/systemd/*
-/lib/systemd/system/*
+%{_datadir}/%{name}/*
+/usr/lib/systemd/system/*
 /var/lib/*
 
 %changelog
