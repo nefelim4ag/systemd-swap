@@ -375,7 +375,7 @@ case "$1" in
 
         RET="${file}"
         case "${FSTYPE}" in
-          ext2|ext3|ext4|btrfs)
+          ext2|ext3|ext4|btrfs|f2fs|xfs)
           ;;
           btrfs_old)
             RET=$(losetup_w "${file}")
