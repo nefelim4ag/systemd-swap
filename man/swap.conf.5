@@ -1,0 +1,122 @@
+.TH swap.conf 5 "JUNE 2020" "systemd-swap 4.2.0" swap.conf
+.SH NAME
+swap.conf \- systemd-swap configuration files.
+.SH SYNOPSIS
+.IP /etc/systemd/swap.conf.d/*.conf
+.IP /run/systemd/swap.conf.d/*.conf
+.IP /usr/lib/systemd/swap.conf.d/*.conf
+.IP /etc/systemd/swap.conf
+.IP /usr/share/systemd-swap/swap-default.conf
+.SH DESCRIPTION
+These configuration files control zram, zswap and swapfc.
+.SH CONFIGURATION DIRECTORIES AND PRECEDENCE
+.PP
+The default configuration is defined during compilation, so a configuration file is only needed when it is necessary to deviate from those defaults. By default, the configuration file in /etc/systemd/ contains commented out entries showing the defaults as a guide to the administrator. This file can be edited to create local overrides.
+.PP
+When packages need to customize the configuration, they can install configuration snippets in /usr/lib/systemd/*.conf.d/ or /usr/local/lib/systemd/*.conf.d/. The main configuration file is read before any of the configuration directories, and has the lowest precedence; entries in a file in any configuration directory override entries in the single configuration file. Files in the *.conf.d/ configuration subdirectories are sorted by their filename in lexicographic order, regardless of in which of the subdirectories they reside. When multiple files specify the same option, for options which accept just a single value, the entry in the file with the lexicographically latest name takes precedence. For options which accept a list of values, entries are collected as they occur in files sorted lexicographically.
+.PP
+Files in /etc/ are reserved for the local administrator, who may use this logic to override the configuration files installed by vendor packages. It is recommended to prefix all filenames in those subdirectories with a two-digit number and a dash, to simplify the ordering of the files.
+.PP
+To disable a configuration file supplied by the vendor, the recommended way is to place a symlink to /dev/null in the configuration directory in /etc/, with the same filename as the vendor configuration file.
+.SH OPTIONS
+.PP
+The following options are available in the "zswap" section:
+.I
+.IP zswap_enabled=
+Whether zswap is enabled, set to yes/y/1/true to enable zswap.
+.I
+.IP zswap_compressor=
+Compressor algorithm for zswap, Linux currently supports
+.B lzo,
+.B lz4,
+.B zstd,
+.B zlo-rle
+and
+.B zl4hc.
+.I
+.IP zswap_max_pool_percent=
+Percentage of ram that can be compressed.
+.I
+.IP zswap_zpool=
+Set wich compressed memory pool to use, if unsure use z3fold.
+.PP
+The following options are available in the "zram" section:
+.I
+.IP zram_enabled=
+Whether zram is enabled, set to yes/y/1/true to enable zram.
+.I
+.IP zram_size=
+Set the ammount of memory per zram device.
+.I
+.IP zram_count=
+Set the ammount of zram devices.
+.I
+.IP zram_streams=
+Set the ammount of compression streams.
+.I
+.IP zram_alg=
+Compressor algorithm for zram, Linux currently supports
+.B lzo,
+.B lz4,
+.B zstd,
+.B zlo-rle
+and
+.B zl4hc.
+.I
+.IP zram_prio=
+Set the swap priority for zram devices.
+.PP
+The following options are available in the "swapfc" section:
+.I
+.IP swapfc_enabled=
+Whether swapfc is enabled, set to yes/y/1/true to enable swapfc.
+.I
+.IP swapfc_force_use_loop=
+Whether swapfc should always create swap files on loopback devices.
+.I
+.IP swapfc_frequency=
+The frequency in seconds swapfc should run at.
+.I
+.IP swapfc_chunk_size=
+Size of the swap files created by swapfc.
+.I
+.IP swapfc_max_count=
+Maximum number of swap files swapfc should create (note that linux by defaults only supports 32).
+.I
+.IP swapfc_min_count=
+Minimum number of swap files swapfc should create on startup. Defaults to 0 to only allocate swap files when running lon free memory.
+.I
+.IP swapfc_free_swap_perc=
+Ammount of memory free (in percent) when swapfc creates a new swap file.
+.I
+.IP swapfc_remove_free_swap_perc=
+Ammount of memory free (in percent) when swapfc removes a swap file.
+.I
+.IP swapfc_priority=
+The priority given to swapfiles created by swapfc (decreasing by one for every swap file created). When at 0 it skips to -2. Max 32767.
+.I
+.IP swapfc_path=
+Path to folder where swapfc creates its swap files.
+.PP
+The following options are only for loop devices.
+.I
+.IP swapfc_nocow=
+Whether to disable CoW on swap file.
+.I
+.IP swapfc_directio=
+Whether to use direct_io.
+.I
+.IP swapfc_force_preallocated=
+Whether to preallocated files.
+.PP
+The following options are available in the "swapd" section:
+.I
+.IP swapd_auto_swapon=
+Whether to automatically find and activate all swap devices.
+.I
+.IP swapd_prio=
+Priority for devices found by swapd_auto_swapon.
+.SH AUTHOR
+Vilgot Fredenberg <vilgot@fredenberg.xyz>
+.SH "SEE ALSO"
+.BR systemd-swap (1)

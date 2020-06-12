@@ -1,0 +1,25 @@
+.TH systemd-swap 1 "JUNE 2020" "systemd-swap 4.2.0" systemd-swap
+.SH NAME
+systemd-swap \- Script for creating hybrid swap space from zram swaps, swap files and swap partitions.
+.SH SYNOPSIS
+.B systemd-swap [-h]
+.I start|stop|status
+.SH DESCRIPTION
+Systemd-swap manages the configuration of
+.B zram
+and
+.B zswap
+and allows for automatically setting up swap files through
+.B swapfc
+and automatically enables availible swapfiles and swap partitions.
+.SH OPTIONS
+.IP start
+Starts systemd-swap.
+.IP stop
+Stops systemd-swap.
+.IP status
+Prints the status of systemd-swap; modules being used and their statuses.
+.SH AUTHOR
+Vilgot Fredenberg <vilgot@fredenberg.xyz>
+.SH "SEE ALSO"
+.BR swap.conf (5)
