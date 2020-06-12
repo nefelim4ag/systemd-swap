@@ -34,7 +34,7 @@ define banner
 endef
 swap.conf:
 	echo -e "$(banner)" > $@
-	grep -o '^[^#]*' swap-default.conf >> $@
+	grep -o '^[^#]*' swap-default.conf | sed 's/^/#/' >> $@
 
 install: ## Install systemd-swap
 install: dirs files
