@@ -15,7 +15,6 @@ $(LIB_T):
 
 dirs: $(LIB_T)
 
-
 $(BIN_T): systemd-swap
 	install -Dm755 $< $@
 
@@ -30,6 +29,12 @@ $(CNF_T): swap.conf
 
 files: $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T)
 
+define banner
+#  This file is part of systemd-swap.\n#\n# Entries in this file show the systemd-swap defaults as\n# specified in /usr/share/systemd-swap/swap-default.conf\n# You can change settings by editing this file.\n# Defaults can be restored by simply deleting this file.\n#\n# See swap.conf(5) and /usr/share/systemd-swap/swap-default.conf for details.\n
+endef
+swap.conf:
+	echo -e "$(banner)" > $@
+	grep -o '^[^#]*' swap-default.conf | sed 's/^/#/' >> $@
 
 install: ## Install systemd-swap
 install: dirs files

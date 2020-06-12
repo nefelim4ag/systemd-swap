@@ -2,6 +2,7 @@
 Description=Manage swap spaces on zram, files and partitions.
 
 [Service]
+Type=notify
 ExecStart=/usr/bin/systemd-swap start
 ExecStop=/usr/bin/systemd-swap stop
 RemainAfterExit=true
