@@ -84,6 +84,9 @@ snore(){
 }
 
 # Global variables
+# NCPU is being referenced inside of swap-default.conf
+# shellcheck disable=SC2034
+readonly NCPU=$(nproc)
 readonly RUN_SYSD="/run/systemd"
 readonly ETC_SYSD="/etc/systemd"
 readonly VEN_SYSD="/usr/lib/systemd"
