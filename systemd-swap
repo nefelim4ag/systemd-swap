@@ -407,6 +407,7 @@ case "$1" in
         systemctl daemon-reload
         systemctl start "${UNIT_NAME}"
         [ -b "${swapfile}" ] && losetup -d "${swapfile}"
+        systemd-notify "STATUS=Monitoring memory status..."
       }
 
       destroy_swapfile(){
@@ -422,6 +423,7 @@ case "$1" in
           fi
         done
         (( --allocated ))
+        systemd-notify "STATUS=Monitoring memory status..."
       }
 
       mkdir -p \
