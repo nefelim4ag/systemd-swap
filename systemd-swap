@@ -392,9 +392,9 @@ case "$1" in
         swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
         mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
         if YN ${swapfc_force_preallocated}; then
-          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Tag="swapfc_${allocated}")
+          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Priority=$(( swapfc_priority + 1 - allocated )) Tag="swapfc_${allocated}")
         else
-          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Options=discard Tag="swapfc_${allocated}")
+          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Priority=$(( swapfc_priority + 1 - allocated )) Options=discard Tag="swapfc_${allocated}")
         fi
         systemctl daemon-reload
         systemctl start "${UNIT_NAME}"
