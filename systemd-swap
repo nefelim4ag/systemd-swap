@@ -436,7 +436,7 @@ case "$1" in
         if (( curr_free_swap_perc < swapfc_free_swap_perc )) && (( allocated < swapfc_max_count )); then
           create_swapfile
         fi
-        (( allocated <= 2 )) && (( allocated <= swapfc_min_count )) && continue
+        (( allocated <= 2 )) || (( allocated <= swapfc_min_count )) && continue
         (( curr_free_swap_perc > swapfc_remove_free_swap_perc )) && destroy_swapfile
       done
     fi
