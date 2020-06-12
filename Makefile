@@ -1,14 +1,37 @@
-PREFIX ?= /
-FEDORA_VERSION ?= f32
+PREFIX			?= /
+prefix			?= $(PREFIX)
 
-default:  help
+# this avoids /usr/local/usr/* when
+# installing with prefix=/usr/local
+ifeq ($(prefix), /usr/local)
+exec_prefix		?= $(prefix)
+datarootdir		?= $(prefix)/share
+else
+exec_prefix		?= $(prefix)/usr
+datarootdir		?= $(prefix)/usr/share
+endif
 
-LIB_T  := $(PREFIX)/var/lib/systemd-swap
-BIN_T  := $(PREFIX)/usr/bin/systemd-swap
-SVC_T  := $(PREFIX)/lib/systemd/system/systemd-swap.service
-DFL_T  := $(PREFIX)/usr/share/systemd-swap/swap-default.conf
-CNF_T  := $(PREFIX)/etc/systemd/swap.conf
+bindir			?= $(exec_prefix)/bin
+libdir			?= $(exec_prefix)/lib
+datadir			?= $(datarootdir)
+mandir			?= $(datarootdir)/man
 
+sysconfdir		?= $(prefix)/etc
+localstatedir	?= $(prefix)/var
+
+FEDORA_VERSION 	?= f32
+
+default: help
+
+LIB_T := $(DESTDIR)$(localstatedir)/lib/systemd-swap
+BIN_T := $(DESTDIR)$(bindir)/systemd-swap
+SVC_T := $(DESTDIR)$(libdir)/systemd/system/systemd-swap.service
+DFL_T := $(DESTDIR)$(datadir)/systemd-swap/swap-default.conf
+CNF_T := $(DESTDIR)$(sysconfdir)/systemd/swap.conf
+MAN5_T := $(DESTDIR)$(mandir)/man5/swap.conf.5
+MAN8_T := $(DESTDIR)$(mandir)/man8/systemd-swap.8
+
+.PHONY: files dirs install uninstall deb rpm help
 
 $(LIB_T):
 	mkdir -p $@
@@ -22,19 +45,26 @@ $(SVC_T): systemd-swap.service
 	install -Dm644 $< $@
 
 $(DFL_T): swap-default.conf
-	install -bDm644 $< $@
+	install -Dm644 $< $@
 
 $(CNF_T): swap.conf
 	install -bDm644 -S .old $< $@
 
-files: $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T)
+$(MAN5_T): man/swap.conf.5
+	install -Dm644 $< $@
+
+$(MAN8_T): man/systemd-swap.8
+	install -Dm644 $< $@
 
 define banner
-#  This file is part of systemd-swap.\n#\n# Entries in this file show the systemd-swap defaults as\n# specified in /usr/share/systemd-swap/swap-default.conf\n# You can change settings by editing this file.\n# Defaults can be restored by simply deleting this file.\n#\n# See swap.conf(5) and /usr/share/systemd-swap/swap-default.conf for details.\n
+#  This file is part of systemd-swap.\n#\n# Entries in this file show the systemd-swap defaults as\n# specified in /usr/share/systemd-swap/swap-default.conf\n# You can change settings by editing this file.\n# Defaults can be restored by simply deleting this file.\n#\n# See swap.conf(5) and /usr/share/systemd-swap/swap-default.conf for details.\n\n
 endef
-swap.conf:
-	echo "$(banner)" > $@
-	grep -o '^[^#]*' swap-default.conf | sed 's/^/#/' >> $@
+
+swap.conf: ## Generate swap.conf
+	@printf "$(banner)" > $@
+	@grep -o '^[^#]*' swap-default.conf | sed 's/^/#/;s/[ \t]*$$//' >> $@
+
+files: $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T) $(MAN5_T) $(MAN8_T)
 
 install: ## Install systemd-swap
 install: dirs files
@@ -42,12 +72,8 @@ install: dirs files
 uninstall: ## Delete systemd-swap (stop systemd-swap first)
 uninstall:
 	test ! -f /run/systemd/swap/swap.conf
-	@rm -v $(BIN_T)
-	@rm -v $(SVC_T)
-	@rm -v $(DFL_T)
-	@rm -v $(CNF_T)
-	rm -r $(PREFIX)/var/lib/systemd-swap
-	rmdir $(PREFIX)/usr/share/systemd-swap
+	rm -v $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T) $(MAN5_T) $(MAN8_T)
+	rm -rv $(LIB_T) $(DESTDIR)$(datadir)/systemd-swap
 
 deb: ## Create debian package
 deb: package.sh
@@ -58,4 +84,4 @@ rpm: package.sh
 	./$< fedora $(FEDORA_VERSION)
 
 help: ## Show help
-	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##/\t/'
+	@grep -h "##" $(MAKEFILE_LIST) | grep -v grep | sed 's/\\$$//;s/##/\t/'
