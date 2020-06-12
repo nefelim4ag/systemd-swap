@@ -450,10 +450,7 @@ case "$1" in
       fi
     done
 
-    if [ -f "${WORK_DIR}/swapfc/.lock" ]; then
-      rm -vf "${WORK_DIR}/swapfc/.lock"
-      snore 5
-    fi
+    [ -f "${WORK_DIR}/swapfc/.lock" ] && rm -vf "${WORK_DIR}/swapfc/.lock"
 
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
       if grep -q swapfc "${UNIT_PATH}"; then
