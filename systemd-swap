@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+# shellcheck disable=SC2154
 set -o pipefail
 
 readonly DEBUG=0
@@ -89,7 +89,6 @@ readonly ETC_SYSD="/etc/systemd"
 readonly VEN_SYSD="/usr/lib/systemd"
 readonly DEF_CONFIG="/usr/share/systemd-swap/swap-default.conf"
 readonly ETC_CONFIG="${ETC_SYSD}/swap.conf"
-readonly NCPU=$(nproc)
 readonly RAM_SIZE=$(get_mem_stat MemTotal)
 readonly PAGE_SIZE=$(getconf PAGESIZE)
 readonly WORK_DIR="/run/systemd/swap"
@@ -200,13 +199,15 @@ case "$1" in
     }
     load_config_fragments
 
+    systemd-notify "READY=1"
+
     if YN "{$zram_enabled}" && ( YN "${zswap_enabled}" || YN "${swapfc_enabled}" || YN "${swapd_auto_swapon}" ); then
-    WARN "Combining zram with zswap/swapfc/swapd_auto_swapon can lead to LRU inversion and is strongly recommended against"
+      WARN "Combining zram with zswap/swapfc/swapd_auto_swapon can lead to LRU inversion and is strongly recommended against"
     fi
 
     if YN "${zswap_enabled}"; then
+      systemd-notify "STATUS=Setting up Zswap..."
       [ ! -d ${ZSWAP_M} ] && ERRO "Zswap - not supported on current kernel"
-
       INFO "Zswap: backup current configuration: start"
       mkdir -p "${WORK_DIR}/zswap"
       for file in "${ZSWAP_M_P}"/*; do
@@ -224,6 +225,7 @@ case "$1" in
     fi
 
     if YN "${zram_enabled}"; then
+      systemd-notify "STATUS=Setting up Zram..."
       INFO "Zram: check availability"
       if [ ! -d "/sys/module/zram" ]; then
         INFO "Zram: not part of kernel, trying to find zram module"
@@ -270,9 +272,11 @@ case "$1" in
           WARN "Can't get free Zram device"
         fi
       done
+      systemd-notify "STATUS=Zram setup finished"
     fi
 
     if YN "${swapd_auto_swapon}"; then
+      systemd-notify "STATUS=Activating swap units..."
       INFO "swapD: pickup devices from systemd-gpt-auto-generator"
       FIND_SWAP_UNITS | while read -r UNIT_PATH; do
         if grep -q systemd-gpt-auto-generator "${UNIT_PATH}"; then
@@ -296,6 +300,7 @@ case "$1" in
         INFO "swapD: enabled device: ${device}"
         swapd_prio=$(( swapd_prio - 1 ))
       done
+      systemd-notify "STATUS=Swap unit activation finished"
     fi
 
     if YN "${swapfc_enabled}"; then
@@ -315,6 +320,7 @@ case "$1" in
 
       to_bytes(){ numfmt --to=none --from=iec "$1"; }
 
+      systemd-notify "STATUS=Monitoring memory status..."
       # must exists before stat()
       mkdir -p "${swapfc_path}"
 
@@ -385,8 +391,10 @@ case "$1" in
       create_swapfile(){
         if check_ENOSPC "${swapfc_path}"; then
           WARN "swapFC: ENOSPC"
+          systemd-notify "STATUS=Not enough space for allocating chunk"
           return
         fi
+        systemd-notify "STATUS=Allocating swap file..."
         (( ++allocated ))
         INFO "swapFC: free ram: ${curr_free_ram_perc} < ${swapfc_free_swap_perc} - allocate chunk: ${allocated}"
         swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
@@ -399,9 +407,11 @@ case "$1" in
         systemctl daemon-reload
         systemctl start "${UNIT_NAME}"
         [ -b "${swapfile}" ] && losetup -d "${swapfile}"
+        systemd-notify "STATUS=Monitoring memory status..."
       }
 
       destroy_swapfile(){
+        systemd-notify "STATUS=Deallocating swap file..."
         INFO "swapFC: free swap: ${curr_free_swap_perc} > ${swapfc_remove_free_swap_perc} - freeup chunk: ${allocated}"
         FIND_SWAP_UNITS | while read -r UNIT_PATH; do
           if grep -q "swapfc_${allocated}" "${UNIT_PATH}"; then
@@ -413,6 +423,7 @@ case "$1" in
           fi
         done
         (( --allocated ))
+        systemd-notify "STATUS=Monitoring memory status..."
       }
 
       mkdir -p \
@@ -427,12 +438,8 @@ case "$1" in
       while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
-          if (( curr_free_ram_perc < swapfc_free_swap_perc )); then
-            create_swapfile
-            continue
-          else
-            continue
-          fi
+          (( curr_free_ram_perc < swapfc_free_swap_perc )) && create_swapfile
+          continue
         fi
         curr_free_swap_perc=$(get_free_swap_perc)
         if (( curr_free_swap_perc < swapfc_free_swap_perc )) && (( allocated < swapfc_max_count )); then
@@ -445,7 +452,7 @@ case "$1" in
   ;;
   stop)
     [ ! -f "${LOCK_STARTED}" ] && INFO_E "$0 already stopped"
-
+    systemd-notify "STOPPING=1"
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
       if grep -q swapd "${UNIT_PATH}"; then
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
