@@ -200,8 +200,8 @@ case "$1" in
     }
     load_config_fragments
 
-    if YN "${zswap_enabled}" && YN "$zram_enabled}"; then
-    WARN "Having zswap and zram enabled at the same time can lead to LRU inversion and is strongly recommended against"
+    if YN "{$zram_enabled}" && ( YN "${zswap_enabled}" || YN "${swapfc_enabled}" || YN "${swapd_auto_swapon}" ); then
+    WARN "Combining zram with zswap/swapfc/swapd_auto_swapon can lead to LRU inversion and is strongly recommended against"
     fi
 
     zswap_enabled=${zswap_enabled:-0}
