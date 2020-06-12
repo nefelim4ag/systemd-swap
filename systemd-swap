@@ -291,6 +291,7 @@ case "$1" in
         done
         [ ! -b "${device}" ] && continue
         UNIT_NAME=$(gen_swap_unit What="${device}" Options=discard Tag="swapd")
+        systemctl daemon-reload
         systemctl start "${UNIT_NAME}" || continue
         INFO "swapD: enabled device: ${device}"
         swapd_prio=$(( swapd_prio - 1 ))
@@ -395,6 +396,7 @@ case "$1" in
         else
           UNIT_NAME=$(gen_swap_unit What="${swapfile}" Options=discard Tag="swapfc_${allocated}")
         fi
+        systemctl daemon-reload
         systemctl start "${UNIT_NAME}"
         [ -b "${swapfile}" ] && losetup -d "${swapfile}"
       }
