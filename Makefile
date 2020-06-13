@@ -57,11 +57,11 @@ $(MAN8_T): man/systemd-swap.8
 	install -Dm644 $< $@
 
 define banner
-#  This file is part of systemd-swap.\n#\n# Entries in this file show the systemd-swap defaults as\n# specified in /usr/share/systemd-swap/swap-default.conf\n# You can change settings by editing this file.\n# Defaults can be restored by simply deleting this file.\n#\n# See swap.conf(5) and /usr/share/systemd-swap/swap-default.conf for details.\n
+#  This file is part of systemd-swap.\n#\n# Entries in this file show the systemd-swap defaults as\n# specified in /usr/share/systemd-swap/swap-default.conf\n# You can change settings by editing this file.\n# Defaults can be restored by simply deleting this file.\n#\n# See swap.conf(5) and /usr/share/systemd-swap/swap-default.conf for details.\n\n
 endef
 
 swap.conf: ## Generate swap.conf
-	@echo -e "$(banner)" > $@
+	@printf "$(banner)" > $@
 	@grep -o '^[^#]*' swap-default.conf | sed 's/^/#/;s/[ \t]*$$//' >> $@
 
 files: $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T) $(MAN5_T) $(MAN8_T)
