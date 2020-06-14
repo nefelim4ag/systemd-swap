@@ -1,4 +1,4 @@
-.TH swap.conf 5 "JUNE 2020" "systemd-swap 4.2.0" swap.conf
+.TH swap.conf 5 "JUNE 2020" "systemd-swap 4.2.1" swap.conf
 .SH NAME
 swap.conf \- systemd-swap configuration files.
 .SH SYNOPSIS
@@ -15,9 +15,9 @@ The default configuration is defined during compilation, so a configuration file
 By default, the configuration file in /etc/systemd/ contains commented out entries showing the defaults as a guide to the administrator.
 This file can be edited to create local overrides.
 .PP
-When packages need to customize the configuration, they can install configuration snippets in /usr/lib/systemd/*.conf.d/ or /usr/local/lib/systemd/*.conf.d/.
+When packages need to customize the configuration, they can install configuration snippets in /usr/lib/systemd/swap.conf.d/.
 The main configuration file is read before any of the configuration directories, and has the lowest precedence; entries in a file in any configuration directory override entries in the single configuration file.
-Files in the *.conf.d/ configuration subdirectories are sorted by their filename in lexicographic order, regardless of in which of the subdirectories they reside.
+Files in the swap.conf.d/ configuration subdirectories are sorted by their filename in lexicographic order, regardless of in which of the subdirectories they reside.
 When multiple files specify the same option, for options which accept just a single value, the entry in the file with the lexicographically latest name takes precedence.
 For options which accept a list of values, entries are collected as they occur in files sorted lexicographically.
 .PP
