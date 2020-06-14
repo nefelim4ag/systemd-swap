@@ -1,4 +1,3 @@
-PREFIX			?= /
 prefix			?= $(PREFIX)
 
 # this avoids /usr/local/usr/* when
