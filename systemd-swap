@@ -244,6 +244,8 @@ case "$1" in
         INFO "Zram: module already loaded"
       fi
 
+      # spread total capacity over all devices
+      zram_size=$(( zram_size / zram_count ))
       for (( i = 0; i < zram_count; i++ )); do
         INFO "Zram: trying to initialize free device"
         # zramctl is an external program -> return path to first free device
