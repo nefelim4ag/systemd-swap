@@ -31,7 +31,7 @@ CNF_T := $(DESTDIR)$(sysconfdir)/systemd/swap.conf
 MAN5_T := $(DESTDIR)$(mandir)/man5/swap.conf.5
 MAN8_T := $(DESTDIR)$(mandir)/man8/systemd-swap.8
 
-.PHONY: files dirs install uninstall deb rpm help
+.PHONY: files dirs install uninstall clean deb rpm help
 
 $(LIB_T):
 	mkdir -p $@
