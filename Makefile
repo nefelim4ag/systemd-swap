@@ -19,6 +19,7 @@ sysconfdir		?= $(prefix)/etc
 localstatedir	?= $(prefix)/var
 
 FEDORA_VERSION 	?= f32
+GIT := $(shell command -v git 2> /dev/null)
 
 default: help
 
@@ -73,6 +74,12 @@ uninstall:
 	test ! -f /run/systemd/swap/swap.conf
 	rm -v $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T) $(MAN5_T) $(MAN8_T)
 	rm -rv $(LIB_T) $(DESTDIR)$(datadir)/systemd-swap
+
+clean: ## Remove generated files
+ifdef GIT
+	git clean -fxd
+endif
+	rm -vf swap.conf
 
 deb: ## Create debian package
 deb: package.sh
