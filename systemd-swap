@@ -65,7 +65,14 @@ get_mem_stat(){
   printf "%s" "${value[0]}"
 }
 
-get_fs_type(){ df "$1" --output=fstype | tail -n 1; }
+get_fs_type(){
+  if [ -d "$1" ]; then path="$1";
+  elif [ -d "${1%/*/}" ]; then path="${1%/*/}";
+  elif [ -d "${1%/*}" ]; then path="${1%/*}";
+  else ERRO "swapfc_path is invalid"
+  fi
+  df "$path" --output=fstype | tail -n 1
+}
 AMI_ROOT(){ [ "${UID}" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/{system/,generator/} -type f -name "*.swap"; }
 GET_WHAT_FROM_SWAP_UNIT(){ grep -oP 'What=\K.*' "$1"; }
@@ -326,12 +333,14 @@ case "$1" in
       to_bytes(){ numfmt --to=none --from=iec "$1"; }
 
       systemd-notify "STATUS=Monitoring memory status..."
+
+      FSTYPE=$(get_fs_type "${swapfc_path}")
       # must exists before stat()
-      mkdir -p "${swapfc_path}"
+      [ "$FSTYPE" == "btrfs" ] && btrfs subvolume create "${swapfs_path}" \
+	      || mkdir -p "${swapfc_path}"
 
       chunk_size=$(to_bytes "${swapfc_chunk_size}")
       BLOCK_SIZE=$(stat -f -c %s "${swapfc_path}")
-      FSTYPE=$(get_fs_type "${swapfc_path}")
 
       if [ "$FSTYPE" = "btrfs" ]; then
         # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
@@ -431,8 +440,10 @@ case "$1" in
         systemd-notify "STATUS=Monitoring memory status..."
       }
 
+      [ "${FSTYPE}" == "btrfs" ] && btrfs subvolume create "${swapfc_path}" \
+	     || mkdir -p "${swapfc_path}"
+
       mkdir -p \
-        "${swapfc_path}" \
         "${WORK_DIR}/swapfc/"
       touch "${WORK_DIR}/swapfc/.lock"
       declare -i allocated=0
