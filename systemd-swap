@@ -67,8 +67,7 @@ get_mem_stat(){
 
 get_fs_type(){
   if [ -d "$1" ]; then path="$1";
-  elif [ -d "${1%/*/}" ]; then path="${1%/*/}";
-  elif [ -d "${1%/*}" ]; then path="${1%/*}";
+  elif [ -d $(dirname "$1") ]; then path=$(dirname "$1");
   else ERRO "swapfc_path is invalid"
   fi
   df "$path" --output=fstype | tail -n 1
@@ -336,8 +335,9 @@ case "$1" in
 
       FSTYPE=$(get_fs_type "${swapfc_path}")
       # must exists before stat()
+      mkdir -p $(dirname "$swapfc_path")
       [ "$FSTYPE" == "btrfs" ] && btrfs subvolume create "${swapfs_path}" \
-	      || mkdir -p "${swapfc_path}"
+	      || mkdir "${swapfc_path}"
 
       chunk_size=$(to_bytes "${swapfc_chunk_size}")
       BLOCK_SIZE=$(stat -f -c %s "${swapfc_path}")
@@ -437,8 +437,9 @@ case "$1" in
         systemd-notify "STATUS=Monitoring memory status..."
       }
 
+      mkdir -p $(dirname "$swapfc_path")
       [ "${FSTYPE}" == "btrfs" ] && btrfs subvolume create "${swapfc_path}" \
-	     || mkdir -p "${swapfc_path}"
+	     || mkdir "${swapfc_path}"
 
       mkdir -p \
         "${WORK_DIR}/swapfc/"
