@@ -51,8 +51,8 @@ get_mem_stat_multi(){
   while read -r line; do
     for field in "${fields[@]}"; do
       if [[ $line =~ ^$field:[[:space:]]+([[:digit:]]+)[[:space:]]+kB$ ]]; then
-          outref+=( $(( BASH_REMATCH[1] * 1024 )) )
-          ((++matches))
+        outref+=( $(( BASH_REMATCH[1] * 1024 )) )
+        ((++matches))
       fi
     done
     ((matches == ${#fields[@]})) && break;
@@ -78,9 +78,9 @@ help(){
 }
 
 snore(){
-    local IFS
-    [[ -n "${_snore_fd:-}" ]] || exec {_snore_fd}<> <(:)
-    read ${1:+-t "$1"} -u $_snore_fd || :
+  local IFS
+  [[ -n "${_snore_fd:-}" ]] || exec {_snore_fd}<> <(:)
+  read ${1:+-t "$1"} -u $_snore_fd || :
 }
 
 # Global variables
@@ -170,6 +170,7 @@ case "$1" in
     touch "${LOCK_STARTED}"
 
     # load default values
+    # shellcheck source=swap-default.conf
     . "${DEF_CONFIG}" || ERRO "Error loading ${DEF_CONFIG}"
 
     load_config_fragments(){
@@ -177,7 +178,7 @@ case "$1" in
       # etc > run > lib for all fragments > /etc/systemd/swap.conf
       if [[ -f "$ETC_CONFIG" ]]; then
         INFO "Load: ${ETC_CONFIG}"
-        # shellcheck source=swap.conf
+        # shellcheck disable=SC1090
         . "${ETC_CONFIG}" || WARN "Could not load ${ETC_CONFIG}"
       fi
       local -A a_conf
@@ -192,10 +193,11 @@ case "$1" in
       DEBUG "Selected configuration artifacts: ${a_conf[*]}"
       # sort lexicographically
       readarray -t skeys < <(printf '%s\n' "${!a_conf[@]}" | sort)
-      if [[ -n ${skeys:-} ]]; then 
+      if [[ -n ${skeys:-} ]]; then
         # and finally load it
         for fragment in "${skeys[@]}"; do
           INFO "Load: ${a_conf[$fragment]}"
+          # shellcheck disable=SC1090
           . "${a_conf[$fragment]}" || ERRO "Error loading ${a_conf[$fragment]}"
         done
       fi
@@ -316,7 +318,7 @@ case "$1" in
         # minimum for total is 1 to prevent divide by zero
         echo $(( (swap_stats[1] * 100) / (swap_stats[0] + 1) ));
       }
-      
+
       get_free_ram_perc(){
         local -a ram_stats
         get_mem_stat_multi ram_stats MemTotal MemFree
