@@ -345,11 +345,8 @@ case "$1" in
       if [ "$FSTYPE" = "btrfs" ]; then
         # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
         # if it doesn't, use the old swap through loop workaround
-        (( KMAJOR >= 5 )) && swapfc_nocow=true || FSTYPE="btrfs_old"
+        (( KMAJOR >= 5 )) && swapfc_nocow=true || swapfc_force_use_loop=1
       fi
-
-      YN "${swapfc_force_use_loop}" && FSTYPE=btrfs_old
-      [ "${FSTYPE}" != "btrfs_old" ] && swapfc_force_preallocated=1
 
       check_ENOSPC(){
         path="$1"
@@ -393,7 +390,7 @@ case "$1" in
         }
 
         RET="${file}"
-        [[ "${FSTYPE}" == "btrfs_old" ]] && RET=$(losetup_w "${file}")
+        YN ${swapfc_force_use_loop} && RET=$(losetup_w "${file}")
         echo "${RET}"
       }
 
