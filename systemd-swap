@@ -336,7 +336,7 @@ case "$1" in
       FSTYPE=$(get_fs_type "${swapfc_path}")
       # must exists before stat()
       mkdir -p $(dirname "$swapfc_path")
-      [ "$FSTYPE" == "btrfs" ] && btrfs subvolume create "${swapfs_path}" \
+      [ "$FSTYPE" == "btrfs" ] && btrfs subvolume create "${swapfc_path}" \
 	      || mkdir "${swapfc_path}"
 
       chunk_size=$(to_bytes "${swapfc_chunk_size}")
@@ -437,12 +437,7 @@ case "$1" in
         systemd-notify "STATUS=Monitoring memory status..."
       }
 
-      mkdir -p $(dirname "$swapfc_path")
-      [ "${FSTYPE}" == "btrfs" ] && btrfs subvolume create "${swapfc_path}" \
-	     || mkdir "${swapfc_path}"
-
-      mkdir -p \
-        "${WORK_DIR}/swapfc/"
+      mkdir -p ${WORK_DIR}/swapfc/"
       touch "${WORK_DIR}/swapfc/.lock"
       declare -i allocated=0
       INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - swapfc_free_swap_perc) / 104857600)) MiB memory usage"
