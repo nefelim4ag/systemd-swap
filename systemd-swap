@@ -246,6 +246,7 @@ case "$1" in
         INFO "Zram: module already loaded"
       fi
 
+      systemctl daemon-reload
       # spread total capacity over all devices
       zram_size=$(( zram_size / zram_count ))
       for (( i = 0; i < zram_count; i++ )); do
