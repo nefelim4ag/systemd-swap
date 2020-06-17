@@ -1,4 +1,3 @@
-PREFIX			?= /
 prefix			?= $(PREFIX)
 
 # this avoids /usr/local/usr/* when
@@ -20,6 +19,7 @@ sysconfdir		?= $(prefix)/etc
 localstatedir	?= $(prefix)/var
 
 FEDORA_VERSION 	?= f32
+GIT := $(shell command -v git 2> /dev/null)
 
 default: help
 
@@ -31,7 +31,7 @@ CNF_T := $(DESTDIR)$(sysconfdir)/systemd/swap.conf
 MAN5_T := $(DESTDIR)$(mandir)/man5/swap.conf.5
 MAN8_T := $(DESTDIR)$(mandir)/man8/systemd-swap.8
 
-.PHONY: files dirs install uninstall deb rpm help
+.PHONY: files dirs install uninstall clean deb rpm help
 
 $(LIB_T):
 	mkdir -p $@
@@ -74,6 +74,12 @@ uninstall:
 	test ! -f /run/systemd/swap/swap.conf
 	rm -v $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T) $(MAN5_T) $(MAN8_T)
 	rm -rv $(LIB_T) $(DESTDIR)$(datadir)/systemd-swap
+
+clean: ## Remove generated files
+ifdef GIT
+	git clean -fxd
+endif
+	rm -vf swap.conf
 
 deb: ## Create debian package
 deb: package.sh

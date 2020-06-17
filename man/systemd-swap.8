@@ -5,13 +5,14 @@ systemd-swap \- Script for creating hybrid swap space from zram swaps, swap file
 .B systemd-swap [-h]
 .I start|stop|status
 .SH DESCRIPTION
-Systemd-swap manages the configuration of
+systemd-swap manages the configuration of
 .B zram
 and
-.B zswap
-and allows for automatically setting up swap files through
+.B zswap\fR,
+allows for setting up swap files based on current memory usage through
 .B swapfc
-and automatically enables availible swapfiles and swap partitions.
+and allows for enabling existing swap files and partitions through
+.B swapD\fR.
 .SH OPTIONS
 .IP start
 Starts systemd-swap.

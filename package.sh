@@ -27,8 +27,9 @@ debian_package(){
     echo "Installed-Size: 16"
     echo "Maintainer: nefelim4ag@gmail.com"
     echo "Description: Script for creating hybrid swap space from zram swaps, swap files and swap partitions."
+    echo "Rules-Requires-Root: no"
   } > "${DEB_NAME}/DEBIAN/control"
-  dpkg-deb --build "${DEB_NAME}"
+  dpkg-deb --build --root-owner-group "${DEB_NAME}"
 }
 
 archlinux_package(){
