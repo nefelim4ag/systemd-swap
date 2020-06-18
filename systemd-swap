@@ -340,7 +340,7 @@ case "$1" in
       # must exists before stat()
       mkdir -p $(dirname "$swapfc_path")
       [ "$FSTYPE" == "btrfs" ] && btrfs subvolume create "${swapfc_path}" \
-	      || mkdir "${swapfc_path}"
+	      || mkdir -p "${swapfc_path}"
 
       chunk_size=$(to_bytes "${swapfc_chunk_size}")
       BLOCK_SIZE=$(stat -f -c %s "${swapfc_path}")
