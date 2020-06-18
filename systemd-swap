@@ -70,7 +70,18 @@ get_fs_type(){
   elif [[ -d $(dirname "$1") ]]; then path=$(dirname "$1");
   else ERRO "swapfc_path is invalid"
   fi
-  df "$path" --output=fstype | tail -n 1
+
+  fstype=$(df "$path" --output=fstype | tail -n 1)
+
+  if [ "$fstype" == "-" ]; then
+    if btrfs subvolume show "$path" &>/dev/null; then
+      fstype="btrfs"
+    else
+      ERRO '$swapfc_path is located on an unknown filesystem'
+    fi
+  fi
+
+  echo "$fstype"
 }
 AMI_ROOT(){ [ "${UID}" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/{system/,generator/} -type f -name "*.swap"; }
