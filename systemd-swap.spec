@@ -1,4 +1,4 @@
-%global snapver %(git describe --tags)
+%global snapver %(git describe --tags --abbrev=0)
 %global commit %(git rev-parse --verify --short=7 HEAD)
 
 Name: systemd-swap
