@@ -66,8 +66,8 @@ get_mem_stat(){
 }
 
 get_fs_type(){
-  if [ -d "$1" ]; then path="$1";
-  elif [ -d $(dirname "$1") ]; then path=$(dirname "$1");
+  if [[ -d $1 ]]; then path=$1;
+  elif [[ -d $(dirname "$1") ]]; then path=$(dirname "$1");
   else ERRO "swapfc_path is invalid"
   fi
   df "$path" --output=fstype | tail -n 1
@@ -338,14 +338,14 @@ case "$1" in
 
       FSTYPE=$(get_fs_type "${swapfc_path}")
       # must exists before stat()
-      mkdir -p $(dirname "$swapfc_path")
-      [ "$FSTYPE" == "btrfs" ] && btrfs subvolume create "${swapfc_path}" \
-	      || mkdir -p "${swapfc_path}"
+      mkdir -p "$(dirname "${swapfc_path}")"
+      [[ $FSTYPE == btrfs ]] && { btrfs subvolume create "${swapfc_path}" \
+	      || mkdir -p "${swapfc_path}"; }
 
       chunk_size=$(to_bytes "${swapfc_chunk_size}")
       BLOCK_SIZE=$(stat -f -c %s "${swapfc_path}")
 
-      if [ "$FSTYPE" = "btrfs" ]; then
+      if [[ $FSTYPE = btrfs ]]; then
         # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
         # if it doesn't, use the old swap through loop workaround
         (( KMAJOR >= 5 )) && swapfc_nocow=true || swapfc_force_use_loop=1
@@ -366,7 +366,7 @@ case "$1" in
         chunk_size="$1" file="$2"
         touch "${file}" && chmod 0600 "${file}"
 
-        [ "$FSTYPE" = "btrfs" ] && YN "${swapfc_nocow}" && chattr +C "${file}"
+        [[ $FSTYPE = btrfs ]] && YN "${swapfc_nocow}" && chattr +C "${file}"
         if [[ $FSTYPE = ext4 || $FSTYPE = ext3 || $FSTYPE = xfs || $FSTYPE = f2fs ]]; then
           dd if=/dev/zero of="$file" status=none bs=1M count=$(( chunk_size / 1048576))
         else
@@ -410,7 +410,7 @@ case "$1" in
         fi
         systemd-notify "STATUS=Allocating swap file..."
         (( ++allocated ))
-        INFO "$1"
+        INFO "$1" $allocated
         swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
         mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
         if YN ${swapfc_force_preallocated}; then
@@ -445,18 +445,18 @@ case "$1" in
       declare -i allocated=0
       INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - swapfc_free_swap_perc) / 104857600)) MiB memory usage"
       for (( i = 0; i < swapfc_min_count; i++ )); do
-        create_swapfile "swapFC: allocate chunk: $(( ${allocated} + 1 ))"
+        create_swapfile "swapFC: allocate chunk: "
       done
       while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
           (( curr_free_ram_perc < swapfc_free_swap_perc )) && create_swapfile \
-          "swapFC: free ram: ${curr_free_ram_perc} < ${swapfc_free_swap_perc} - allocate chunk: $(( ${allocated} + 1 ))"
+          "swapFC: free ram: ${curr_free_ram_perc} < ${swapfc_free_swap_perc} - allocate chunk: "
           continue
         fi
         curr_free_swap_perc=$(get_free_swap_perc)
         if (( curr_free_swap_perc < swapfc_free_swap_perc )) && (( allocated < swapfc_max_count )); then
-          create_swapfile "swapFC: free swap: ${curr_free_swap_perc} < ${swapfc_free_swap_perc} - allocate chunk: $(( ${allocated} + 1 ))"
+          create_swapfile "swapFC: free swap: ${curr_free_swap_perc} < ${swapfc_free_swap_perc} - allocate chunk: "
         fi
         (( allocated <= 2 )) || (( allocated <= swapfc_min_count )) && continue
         (( curr_free_swap_perc > swapfc_remove_free_swap_perc )) && destroy_swapfile
