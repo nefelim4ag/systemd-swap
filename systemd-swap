@@ -410,7 +410,7 @@ case "$1" in
         fi
         systemd-notify "STATUS=Allocating swap file..."
         (( ++allocated ))
-        INFO "swapFC: free ram: ${curr_free_ram_perc} < ${swapfc_free_swap_perc} - allocate chunk: ${allocated}"
+        INFO "$1"
         swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
         mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
         if YN ${swapfc_force_preallocated}; then
@@ -445,17 +445,18 @@ case "$1" in
       declare -i allocated=0
       INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - swapfc_free_swap_perc) / 104857600)) MiB memory usage"
       for (( i = 0; i < swapfc_min_count; i++ )); do
-        create_swapfile
+        create_swapfile "swapFC: allocate chunk: $(( ${allocated} + 1 ))"
       done
       while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
-          (( curr_free_ram_perc < swapfc_free_swap_perc )) && create_swapfile
+          (( curr_free_ram_perc < swapfc_free_swap_perc )) && create_swapfile \
+          "swapFC: free ram: ${curr_free_ram_perc} < ${swapfc_free_swap_perc} - allocate chunk: $(( ${allocated} + 1 ))"
           continue
         fi
         curr_free_swap_perc=$(get_free_swap_perc)
         if (( curr_free_swap_perc < swapfc_free_swap_perc )) && (( allocated < swapfc_max_count )); then
-          create_swapfile
+          create_swapfile "swapFC: free swap: ${curr_free_swap_perc} < ${swapfc_free_swap_perc} - allocate chunk: $(( ${allocated} + 1 ))"
         fi
         (( allocated <= 2 )) || (( allocated <= swapfc_min_count )) && continue
         (( curr_free_swap_perc > swapfc_remove_free_swap_perc )) && destroy_swapfile
