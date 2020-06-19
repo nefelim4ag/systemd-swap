@@ -13,7 +13,7 @@ debian_package(){
   [ -z "${VERSION}" ] && ERRO "Can't get git tag, VERSION are empty!"
   DEB_NAME="systemd-swap_${VERSION}_all"
   mkdir -p "${DEB_NAME}"
-  make install PREFIX="${DEB_NAME}/"
+  DESTDIR=${DEB_NAME}/ make install
   mkdir -p  "${DEB_NAME}/DEBIAN"
   chmod 755 "${DEB_NAME}/DEBIAN"
   {
