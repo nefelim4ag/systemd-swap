@@ -1,0 +1,16 @@
+[package]
+name = "systemd-swap"
+version = "4.97.0"
+authors = ["Vilgot Fredenberg <vilgot@fredenberg.xyz>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sysinfo = "^0.14.0"
+sd-notify = "^0.1.0"
+log = "^0.4.0"
+structopt = "^0.3.0"
+
+[profile.release]
+lto = true
