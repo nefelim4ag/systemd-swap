@@ -68,14 +68,7 @@ $(DFL_T): swap-default.conf
 	install -p -Dm644 $< $@
 
 $(CNF_T): swap.conf
-ifdef PATCH
-	@echo '** Patching prefix in swap.conf..'
-	@sed -e 's#/usr/share/systemd-swap/swap-default.conf#$(datarootdir)/systemd-swap/swap-default.conf#g' \
-		$< > swap.conf.new
-	install -p -bDm644 -S .old swap.conf.new $@
-else
 	install -p -bDm644 -S .old $< $@
-endif
 
 $(MAN5_T): man/swap.conf.5
 	install -p -Dm644 $< $@
@@ -84,7 +77,7 @@ $(MAN8_T): man/systemd-swap.8
 	install -p -Dm644 $< $@
 
 define banner
-#  This file is part of systemd-swap.\n#\n# Entries in this file show the systemd-swap defaults as\n# specified in /usr/share/systemd-swap/swap-default.conf\n# You can change settings by editing this file.\n# Defaults can be restored by simply deleting this file.\n#\n# See swap.conf(5) and /usr/share/systemd-swap/swap-default.conf for details.\n\n
+#  This file is part of systemd-swap.\n#\n# Entries in this file show the systemd-swap defaults as\n# specified in $(datarootdir)/systemd-swap/swap-default.conf\n# You can change settings by editing this file.\n# Defaults can be restored by simply deleting this file.\n#\n# See swap.conf(5) and $(datarootdir)/systemd-swap/swap-default.conf for details.\n\n
 endef
 
 swap.conf: ## Generate swap.conf
