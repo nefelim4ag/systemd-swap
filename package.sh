@@ -13,7 +13,7 @@ debian_package(){
   [ -z "${VERSION}" ] && ERRO "Can't get git tag, VERSION are empty!"
   DEB_NAME="systemd-swap_${VERSION}_all"
   mkdir -p "${DEB_NAME}"
-  DESTDIR=${DEB_NAME}/ make install
+  DESTDIR="${DEB_NAME}"/ make install
   mkdir -p  "${DEB_NAME}/DEBIAN"
   chmod 755 "${DEB_NAME}/DEBIAN"
   {
@@ -43,7 +43,7 @@ centos_package(){
   test -d ./build && rm -rf ./build
   mkdir -p ./build/BUILD
   find . -type f ! -path './.git/*' ! -path './build/*' -exec cp {} build/BUILD \;
-  rpmbuild --define "_topdir `pwd`/build" -bb systemd-swap.spec
+  rpmbuild --define "_topdir $(pwd)/build" -bb systemd-swap.spec
   mv build/RPMS/noarch/*.rpm ./
   rm -rf ./build
 }

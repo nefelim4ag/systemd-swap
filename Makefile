@@ -20,7 +20,10 @@ localstatedir ?= $(prefix)/var
 
 FEDORA_VERSION ?= f32
 
-GIT := $(shell command -v git 2> /dev/null)
+GITB := $(shell command -v git 2>/dev/null)
+ifdef GITB
+REPO := $(shell git rev-parse --is-inside-work-tree 2>/dev/null)
+endif
 
 ifneq ($(strip $(prefix)),)
 PATCH := true
@@ -97,7 +100,7 @@ uninstall:
 	rm -rv $(LIB_T) $(DESTDIR)$(datadir)/systemd-swap
 
 clean: ## Remove generated files
-ifdef GIT
+ifdef REPO
 	git clean -fxd
 else
 	rm -vf swap.conf *.new
