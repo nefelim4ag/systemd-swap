@@ -73,14 +73,13 @@ fn create_swapfile(allocated: &mut u8) -> () {
     sd_notify::notify(true, &[sd_notify::NotifyState::Status(String::from("Allocating swap file..."))]).expect("Unable to notify systemd");
     *allocated += 1;
     prepare_swapfile(*allocated).expect("Unable to prepare swap file");
-    Command::new("/usr/lib/systemd/systemd-makefs").arg("swap").arg(Path::new(SWAPFC_PATH).join(allocated.to_string())).output().expect("Unable to mkswap");
-    Command::new("/usr/bin/swapon").arg(SWAPFC_PATH.to_owned()+"/"+&allocated.to_string()).output().expect("Unable to swapon");
+    Command::new("/usr/bin/mkswap").arg(Path::new(SWAPFC_PATH).join(allocated.to_string())).output().expect("Unable to mkswap");
+    Command::new("/usr/bin/swapon").arg(Path::new(SWAPFC_PATH).join(allocated.to_string())).output().expect("Unable to swapon");
     sd_notify::notify(true, &[sd_notify::NotifyState::Status(String::from("Monitoring memory status..."))]).expect("Unable to notify systemd");
 }
 
 fn prepare_swapfile(file: u8) -> io::Result<()> {
-    let mut file: String = file.to_string();
-    file = SWAPFC_PATH.to_owned()+"/"+&file;
+    let file  = Path::new(SWAPFC_PATH).join(file.to_string());
     // create swap file
     let mut dst = fs::OpenOptions::new()
         .create(true)
@@ -100,7 +99,7 @@ fn prepare_swapfile(file: u8) -> io::Result<()> {
 
 fn destroy_swapfile(allocated: &mut u8) -> io::Result<()> {
     sd_notify::notify(true, &[sd_notify::NotifyState::Status(String::from("Deallocating swap file..."))]).expect("Unable to notify systemd");
-    Command::new("/usr/bin/swapoff").arg(SWAPFC_PATH.to_owned()+"/"+&allocated.to_string()).output().expect("Unable to swapon");
+    Command::new("/usr/bin/swapoff").arg(Path::new(SWAPFC_PATH).join(allocated.to_string())).output().expect("Unable to swapon");
     fs::remove_file(allocated.to_string()).expect("Unable to remove file");
     *allocated -= 1;
     sd_notify::notify(true, &[sd_notify::NotifyState::Status(String::from("Monitoring memory status..."))]).expect("Unable to notify systemd");
