@@ -5,9 +5,9 @@ use std::convert::TryInto;
 use std::process::Command;
 use std::os::unix::fs::OpenOptionsExt;
 use sysinfo::{RefreshKind, System, SystemExt};
-//use anyhow::{anyhow, Context};
 
 // config
+const SWAPFC_BUF_SIZE: usize = 4194304;
 const SWAPFC_FREE_PERC: u8 = 15;
 const SWAPFC_REMOVE_FREE_PERC: u8 = 55;
 const SWAPFC_CHUNK_SIZE: usize = 268435456;
@@ -89,13 +89,11 @@ fn prepare_swapfile(file: u8) -> io::Result<()> {
         .open(&file)
         .unwrap();
     // create a 4MiB buffer of zeroes
-    let buffer = vec![0; 4194304];
+    let buffer = vec![0; SWAPFC_BUF_SIZE];
     // write <SWAPFC_CHUNK_SIZE> to swap file
-    let mut i = 0;
-    while i < SWAPFC_CHUNK_SIZE {
+    for _ in (0..SWAPFC_CHUNK_SIZE).step_by(SWAPFC_BUF_SIZE) {
         // write 4MiB at a time
         dst.write_all(&buffer).expect("Unable to write to file");
-        i += 4194304;
     }
     Ok(())
 }
