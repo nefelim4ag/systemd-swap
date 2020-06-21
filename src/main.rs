@@ -1,4 +1,5 @@
 use std::{fs, thread, time, io};
+use std::io::Write;
 use std::path::Path;
 use std::convert::TryInto;
 use std::process::Command;
@@ -80,17 +81,22 @@ fn create_swapfile(allocated: &mut u8) -> () {
 fn prepare_swapfile(file: u8) -> io::Result<()> {
     let mut file: String = file.to_string();
     file = SWAPFC_PATH.to_owned()+"/"+&file;
-    // create a <SWAPFC_CHUNK_SIZE> buffer of zeroes
-    let buffer = vec![0; SWAPFC_CHUNK_SIZE];
     // create swap file
-    fs::OpenOptions::new()
+    let mut dst = fs::OpenOptions::new()
         .create(true)
-        .write(true)
+        .append(true)
         .mode(0o600)
         .open(&file)
         .unwrap();
-    // write to swap file
-    fs::write(&file, &buffer).expect("Unable to write file");
+    // create a 4MiB buffer of zeroes
+    let buffer = vec![0; 4194304];
+    // write <SWAPFC_CHUNK_SIZE> to swap file
+    let mut i = 0;
+    while i < SWAPFC_CHUNK_SIZE {
+        // write 4MiB at a time
+        dst.write_all(&buffer).expect("Unable to write to file");
+        i += 4194304;
+    }
     Ok(())
 }
 
