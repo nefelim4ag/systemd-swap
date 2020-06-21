@@ -31,43 +31,40 @@ sudo systemctl enable --now systemd-swap
 
 - <img src="https://www.monitorix.org/imgs/archlinux.png" weight="16" height="16"> **Arch**: in the [community](https://www.archlinux.org/packages/community/any/systemd-swap/).
 
-- <img src="https://www.monitorix.org/imgs/debian.png" weight="16" height="16"> **Debian**: use [package.sh](https://raw.githubusercontent.com/Nefelim4ag/systemd-swap/master/package.sh)
+- <img src="https://www.monitorix.org/imgs/debian.png" weight="16" height="16"> **Debian**
 
   ```shell
-  git clone https://github.com/Nefelim4ag/systemd-swap.git
-  ./systemd-swap/package.sh debian
-  sudo apt install ./systemd-swap/systemd-swap_*_all.deb
+  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
+  cd systemd-swap
+  make deb
+  sudo dpkg -i systemd-swap_*_all.deb
   ```
 
 - <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora**
 
   ```shell
-  git clone https://github.com/Nefelim4ag/systemd-swap.git
-  ./systemd-swap/package.sh fedora f32
-  sudo dnf install ./systemd-swap/systemd-swap-*noarch.rpm
+  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
+  cd systemd-swap
+  FEDORA_VERSION=f32 make rpm
+  sudo rpm -U systemd-swap-*noarch.rpm
   ```
 
-- <img src="https://www.monitorix.org/imgs/centos.png" weight="16" height="16"> **CentOS7**:
+- <img src="https://www.monitorix.org/imgs/centos.png" weight="16" height="16"> **CentOS**
 
   ```shell
-  git clone https://github.com/Nefelim4ag/systemd-swap.git
+  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
   ./systemd-swap/package.sh centos
-  sudo yum install ./systemd-swap/systemd-swap-*noarch.rpm
-  ```
-
-- <img src="https://www.monitorix.org/imgs/centos.png" weight="16" height="16"> **CentOS8**:
-
-  ```shell
-  git clone https://github.com/Nefelim4ag/systemd-swap.git
-  ./systemd-swap/package.sh centos
-  sudo dnf install ./systemd-swap/systemd-swap-*noarch.rpm
+  sudo rpm -U ./systemd-swap/systemd-swap-*noarch.rpm
   ```
 
 - **Manual**
 
   ```shell
-  git clone https://github.com/Nefelim4ag/systemd-swap.git
+  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
   sudo make install
+
+  # or into /usr/local:
+  sudo make prefix=/usr/local install
   ```
 
 ## About configuration
