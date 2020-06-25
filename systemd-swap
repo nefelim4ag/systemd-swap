@@ -414,9 +414,9 @@ case "$1" in
         swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
         mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
         if YN ${swapfc_force_preallocated}; then
-          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Priority=$(( swapfc_priority + 1 - allocated )) Tag="swapfc_${allocated}")
+          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Priority=$(( --swapfc_priority + 1 )) Tag="swapfc_${allocated}")
         else
-          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Priority=$(( swapfc_priority + 1 - allocated )) Options=discard Tag="swapfc_${allocated}")
+          UNIT_NAME=$(gen_swap_unit What="${swapfile}" Priority=$(( --swapfc_priority + 1 )) Options=discard Tag="swapfc_${allocated}")
         fi
         systemctl daemon-reload
         systemctl start "${UNIT_NAME}"
@@ -443,7 +443,7 @@ case "$1" in
       mkdir -p "${WORK_DIR}/swapfc/"
       touch "${WORK_DIR}/swapfc/.lock"
       declare -i allocated=0
-      INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - swapfc_free_swap_perc) / 104857600)) MiB memory usage"
+      INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - swapfc_free_swap_perc) / 104857600 )) MiB memory usage"
       for (( i = 0; i < swapfc_min_count; i++ )); do
         create_swapfile "swapFC: allocate chunk: "
       done
