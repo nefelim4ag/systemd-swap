@@ -318,6 +318,29 @@ case "$1" in
     fi
 
     if YN "${swapfc_enabled}"; then
+      # validate swapfc_frequency due to possible issues caused if set incorrectly
+      if [[ -n "${swapfc_frequency//[0-9]}" || -z "$swapfc_frequency" ]]; then
+        ERRO "swapfc_frequency is not set to a valid integer value: ${swapfc_frequency}"
+      elif (( swapfc_frequency < 1 || swapfc_frequency > 86400 )); then
+        WARN "swapfc_frequency must be in range of 1..86400: ${swapfc_frequency} - set to 1"
+        swapfc_frequency=1
+      fi
+
+      polling_rate=$swapfc_frequency
+      double_polling_rate() {
+        local val=$(( polling_rate * 2 ))
+        # do not double, interval is long enough
+        (( val > 86400 || val > swapfc_frequency * 1000 )) && return
+        polling_rate=$val
+        WARN "swapFC: polling rate doubled to ${polling_rate}s"
+      }
+      reset_polling_rate() {
+        if (( polling_rate > swapfc_frequency )); then
+          polling_rate=$swapfc_frequency
+          INFO "swapFC: polling rate reset to ${polling_rate}s"
+        fi
+      }
+
       get_free_swap_perc(){
         local -a swap_stats
         get_mem_stat_multi swap_stats SwapTotal SwapFree
@@ -397,7 +420,7 @@ case "$1" in
         echo "${RET}"
       }
 
-      if (( "${swapfc_max_count}" > 32 )) || (( 1 > "${swapfc_max_count}" )); then
+      if (( swapfc_max_count > 32 || swapfc_max_count < 1 )); then
         WARN "swapfc_max_count must be in range 1..32, reset to 1"
         swapfc_max_count=1
       fi
@@ -405,9 +428,14 @@ case "$1" in
       create_swapfile(){
         if check_ENOSPC "${swapfc_path}"; then
           WARN "swapFC: ENOSPC"
+          # prevent spamming the journal
+          double_polling_rate
           systemd-notify "STATUS=Not enough space for allocating chunk"
           return
-        fi
+        fi  
+
+        # in case we have adjusted the polling rate, reset it
+        reset_polling_rate
         systemd-notify "STATUS=Allocating swap file..."
         (( ++allocated ))
         INFO "$1" $allocated
@@ -447,7 +475,8 @@ case "$1" in
       for (( i = 0; i < swapfc_min_count; i++ )); do
         create_swapfile "swapFC: allocate chunk: "
       done
-      while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${swapfc_frequency}"; do
+      # MAINLOOP
+      while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${polling_rate}"; do
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
           (( curr_free_ram_perc < swapfc_free_swap_perc )) && create_swapfile \
