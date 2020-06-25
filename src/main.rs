@@ -1,9 +1,9 @@
-use std::{fs, thread, time, io};
-use std::io::Write;
-use std::path::Path;
 use std::convert::TryInto;
-use std::process::Command;
+use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
+use std::path::Path;
+use std::process::Command;
+use std::{fs, io, thread, time};
 use sysinfo::{RefreshKind, System, SystemExt};
 
 // config
@@ -19,7 +19,7 @@ const SWAPFC_PATH: &str = "/var/lib/systemd-swap/swapfc";
 const RUN_PATH: &str = "/run/systemd/swap";
 
 fn main() {
-    let lock = RUN_PATH.to_owned()+"/swapfc/.lock";
+    let lock = RUN_PATH.to_owned() + "/swapfc/.lock";
     let mut allocated: u8 = 0;
     for _ in 0..SWAPFC_MIN_COUNT {
         create_swapfile(&mut allocated);
@@ -49,7 +49,7 @@ fn main() {
 
 fn swapfc_init(lock: &str) -> io::Result<()> {
     fs::create_dir_all(SWAPFC_PATH).expect("Unable to create swapfc_path");
-//    fs::create_dir("/run/systemd/swap/swapfc").expect("Unable to create swapfc_run dir");
+    //fs::create_dir("/run/systemd/swap/swapfc").expect("Unable to create swapfc_run dir");
     fs::File::create(lock).expect("Unable to create swapfc lock");
     Ok(())
 }
@@ -69,17 +69,35 @@ fn get_free_swap_perc() -> u8 {
 }
 
 fn create_swapfile(allocated: &mut u8) -> () {
-//   if check_ENOSPC(swapfc_path)
-    sd_notify::notify(true, &[sd_notify::NotifyState::Status(String::from("Allocating swap file..."))]).expect("Unable to notify systemd");
+    //if check_ENOSPC(swapfc_path)
+    sd_notify::notify(
+        true,
+        &[sd_notify::NotifyState::Status(String::from(
+            "Allocating swap file...",
+        ))],
+    )
+    .expect("Unable to notify systemd");
     *allocated += 1;
     prepare_swapfile(*allocated).expect("Unable to prepare swap file");
-    Command::new("/usr/bin/mkswap").arg(Path::new(SWAPFC_PATH).join(allocated.to_string())).output().expect("Unable to mkswap");
-    Command::new("/usr/bin/swapon").arg(Path::new(SWAPFC_PATH).join(allocated.to_string())).output().expect("Unable to swapon");
-    sd_notify::notify(true, &[sd_notify::NotifyState::Status(String::from("Monitoring memory status..."))]).expect("Unable to notify systemd");
+    Command::new("/usr/bin/mkswap")
+        .arg(Path::new(SWAPFC_PATH).join(allocated.to_string()))
+        .output()
+        .expect("Unable to mkswap");
+    Command::new("/usr/bin/swapon")
+        .arg(Path::new(SWAPFC_PATH).join(allocated.to_string()))
+        .output()
+        .expect("Unable to swapon");
+    sd_notify::notify(
+        true,
+        &[sd_notify::NotifyState::Status(String::from(
+            "Monitoring memory status...",
+        ))],
+    )
+    .expect("Unable to notify systemd");
 }
 
 fn prepare_swapfile(file: u8) -> io::Result<()> {
-    let file  = Path::new(SWAPFC_PATH).join(file.to_string());
+    let file = Path::new(SWAPFC_PATH).join(file.to_string());
     // create swap file
     let mut dst = fs::OpenOptions::new()
         .create(true)
@@ -98,11 +116,26 @@ fn prepare_swapfile(file: u8) -> io::Result<()> {
 }
 
 fn destroy_swapfile(allocated: &mut u8) -> io::Result<()> {
-    sd_notify::notify(true, &[sd_notify::NotifyState::Status(String::from("Deallocating swap file..."))]).expect("Unable to notify systemd");
-    Command::new("/usr/bin/swapoff").arg(Path::new(SWAPFC_PATH).join(allocated.to_string())).output().expect("Unable to swapon");
+    sd_notify::notify(
+        true,
+        &[sd_notify::NotifyState::Status(String::from(
+            "Deallocating swap file...",
+        ))],
+    )
+    .expect("Unable to notify systemd");
+    Command::new("/usr/bin/swapoff")
+        .arg(Path::new(SWAPFC_PATH).join(allocated.to_string()))
+        .output()
+        .expect("Unable to swapoff");
     fs::remove_file(allocated.to_string()).expect("Unable to remove file");
     *allocated -= 1;
-    sd_notify::notify(true, &[sd_notify::NotifyState::Status(String::from("Monitoring memory status..."))]).expect("Unable to notify systemd");
+    sd_notify::notify(
+        true,
+        &[sd_notify::NotifyState::Status(String::from(
+            "Monitoring memory status...",
+        ))],
+    )
+    .expect("Unable to notify systemd");
     Ok(())
 }
 
