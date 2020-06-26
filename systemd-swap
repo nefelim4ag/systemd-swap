@@ -319,7 +319,7 @@ case "$1" in
 
     if YN "${swapfc_enabled}"; then
       # validate swapfc_frequency due to possible issues caused if set incorrectly
-      if [[ -n "${swapfc_frequency//[0-9]}" || -z "$swapfc_frequency" ]]; then
+      if [[ -n ${swapfc_frequency//[0-9]} || -z $swapfc_frequency ]]; then
         ERRO "swapfc_frequency is not set to a valid integer value: ${swapfc_frequency}"
       elif (( swapfc_frequency < 1 || swapfc_frequency > 86400 )); then
         WARN "swapfc_frequency must be in range of 1..86400: ${swapfc_frequency} - set to 1"
@@ -476,7 +476,7 @@ case "$1" in
         create_swapfile "swapFC: allocate chunk: "
       done
       # MAINLOOP
-      while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore "${polling_rate}"; do
+      while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore $polling_rate; do
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
           (( curr_free_ram_perc < swapfc_free_swap_perc )) && create_swapfile \
