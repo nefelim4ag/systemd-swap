@@ -373,8 +373,11 @@ case "$1" in
       FSTYPE=$(get_fs_type "${swapfc_path}")
       # must exists before stat()
       mkdir -p "$(dirname "${swapfc_path}")"
-      [[ $FSTYPE == btrfs ]] && { btrfs subvolume create "${swapfc_path}" \
-	      || mkdir -p "${swapfc_path}"; }
+      if [ "$FSTYPE" = btrfs ]; then
+        btrfs subvolume create "${swapfc_path}" &>/dev/null
+      else
+        mkdir -p "${swapfc_path}" 
+      fi
 
       chunk_size=$(to_bytes "${swapfc_chunk_size}")
       BLOCK_SIZE=$(stat -f -c %s "${swapfc_path}")
