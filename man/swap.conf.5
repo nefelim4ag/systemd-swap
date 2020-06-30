@@ -93,11 +93,14 @@ Maximum number of swap files swapfc should create (note that linux by defaults o
 Minimum number of swap files swapfc should create on startup.
 Defaults to 0 to only allocate swap files when running lon free memory.
 .I
+.IP swapfc_free_ram_perc=
+Ammount of memory free (in percent) when swapfc creates a new swap file. (Note that this applies only to the first swap file.)
+.I
 .IP swapfc_free_swap_perc=
-Ammount of memory free (in percent) when swapfc creates a new swap file.
+Ammount of swap free (in percent) when swapfc creates a new swap file.
 .I
 .IP swapfc_remove_free_swap_perc=
-Ammount of memory free (in percent) when swapfc removes a swap file.
+Ammount of swap free (in percent) when swapfc removes a swap file.
 .I
 .IP swapfc_priority=
 The priority given to swapfiles created by swapfc (decreasing by one for every swap file created). When at 0 it skips to -2. Max 32767.

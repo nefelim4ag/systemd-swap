@@ -472,7 +472,7 @@ case "$1" in
       mkdir -p "${WORK_DIR}/swapfc/"
       touch "${WORK_DIR}/swapfc/.lock"
       declare -i allocated=0
-      INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - swapfc_free_swap_perc) / 104857600 )) MiB memory usage"
+      INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - swapfc_free_ram_perc) / 104857600 )) MiB memory usage"
       for (( i = 0; i < swapfc_min_count; i++ )); do
         create_swapfile "swapFC: allocate chunk: "
       done
@@ -480,8 +480,8 @@ case "$1" in
       while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore $polling_rate; do
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
-          (( curr_free_ram_perc < swapfc_free_swap_perc )) && create_swapfile \
-          "swapFC: free ram: ${curr_free_ram_perc} < ${swapfc_free_swap_perc} - allocate chunk: "
+          (( curr_free_ram_perc < swapfc_free_ram_perc )) && create_swapfile \
+          "swapFC: free ram: ${curr_free_ram_perc} < ${swapfc_free_ram_perc} - allocate chunk: "
           continue
         fi
         curr_free_swap_perc=$(get_free_swap_perc)
