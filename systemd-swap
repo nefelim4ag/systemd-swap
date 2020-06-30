@@ -391,7 +391,7 @@ case "$1" in
 
         [[ $FSTYPE = btrfs ]] && YN "${swapfc_nocow}" && chattr +C "${file}"
         if [[ $FSTYPE = ext4 || $FSTYPE = ext3 || $FSTYPE = xfs || $FSTYPE = f2fs ]]; then
-          dd if=/dev/zero of="$file" status=none bs=1M count=$(( chunk_size / 1048576))
+          dd if=/dev/zero of="$file" conv=fdatasync status=none bs=1M count=$(( chunk_size / 1048576))
         else
           if YN ${swapfc_force_preallocated}; then
             # ext2/3 does not support fallocate
