@@ -21,7 +21,7 @@ YN(){
 }
 
 write(){
-  { [ -z "$1" ] || [ -z "$2" ]; } && return
+  [[ -z "$1" || -z "$2" ]] && return
   DATA="$1" FILE="$2"
   echo "${DATA}" > "${FILE}"
 }
@@ -30,14 +30,14 @@ write(){
 # i.e. 4KiB on x86_64 - to avoid that, store short strings
 # in symbolic links
 write_l(){
-  { [ -z "$1" ] || [ -z "$2" ]; } && return
+  [[ -z "$1"  ||  -z "$2" ]] && return
   DATA="$1" FILE="$2"
   DATA=$(echo "${DATA}" | base64)
   ln -sfr "/${DATA}" "${FILE}"
 }
 
 read_l(){
-  [ -z "$1" ] && return
+  [[ -z "$1" ]] && return
   FILE="$1"
   DATA=$(basename "$(realpath "${FILE}")")
   echo "${DATA}" | base64 -d
@@ -127,12 +127,12 @@ gen_swap_unit(){
       ;;
     esac
   done
-  [ -n "${What}" ] || return 1
+  [[ -n "${What}" ]] || return 1
 
   What="$(realpath "${What}")"
   # assume it's a file by default
   Type="File"
-  if [ -b "${What}" ]; then
+  if [[ -b "${What}" ]]; then
     Type="Block/Partition"
     [[ "${What}" =~ loop ]] && Type="File"
   fi
@@ -150,8 +150,8 @@ gen_swap_unit(){
     echo '[Swap]'
     echo "What=${What}"
     echo "TimeoutSec=1h"
-    [ -z "${Priority}" ] || echo "Priority=${Priority}"
-    [ -z "${Options}"  ] || echo "Options=${Options}"
+    [[ -z "${Priority}" ]] || echo "Priority=${Priority}"
+    [[ -z "${Options}" ]] || echo "Options=${Options}"
   } > "${UNIT_PATH}"
 
   ln -srf "${UNIT_PATH}" "${RUN_SYSD}/system/swap.target.wants"
@@ -172,7 +172,7 @@ mkdir -p \
 (( $# == 0 )) && set -- status
 case "$1" in
   start)
-    [ -f "${LOCK_STARTED}" ] && ERRO "$0 already started"
+    [[ -f "${LOCK_STARTED}" ]] && ERRO "$0 already started"
     touch "${LOCK_STARTED}"
 
     # load default values
@@ -218,7 +218,7 @@ case "$1" in
 
     if YN "${zswap_enabled}"; then
       systemd-notify "STATUS=Setting up Zswap..."
-      [ ! -d ${ZSWAP_M} ] && ERRO "Zswap - not supported on current kernel"
+      [[ ! -d ${ZSWAP_M} ]] && ERRO "Zswap - not supported on current kernel"
       INFO "Zswap: backup current configuration: start"
       mkdir -p "${WORK_DIR}/zswap"
       for file in "${ZSWAP_M_P}"/*; do
@@ -238,12 +238,12 @@ case "$1" in
     if YN "${zram_enabled}"; then
       systemd-notify "STATUS=Setting up Zram..."
       INFO "Zram: check availability"
-      if [ ! -d "/sys/module/zram" ]; then
+      if [[ ! -d "/sys/module/zram" ]]; then
         INFO "Zram: not part of kernel, trying to find zram module"
         modprobe -n zram || ERRO "Zram: can't find zram module!"
         # workaround for some zram initialization problems
         for (( i = 0; i < 10; i++ )); do
-          [ -d "/sys/module/zram" ] && break
+          [[ -d "/sys/module/zram" ]] && break
           modprobe zram
           snore 1
         done
@@ -266,17 +266,17 @@ case "$1" in
           *"zramctl: no free zram device found"*)
             WARN "Zram: zramctl can't find free device"
             INFO "Zram: using workaround hook for hot add"
-            [ ! -f /sys/class/zram-control/hot_add ] && \
+            [[ ! -f /sys/class/zram-control/hot_add ]] && \
               ERRO "Zram: this kernel does not support hot adding zram devices, please use a 4.2+ kernel or see 'modinfo zram´ and create a modprobe rule"
             read -r NEW_ZRAM < /sys/class/zram-control/hot_add
             INFO "Zram: success: new device /dev/zram${NEW_ZRAM}"
           ;;
           /dev/zram*)
-            [ -b "${OUTPUT}" ] || continue
+            [[ -b "${OUTPUT}" ]] || continue
             zram_dev="${OUTPUT}"
           ;;
         esac
-        if [ -b "${zram_dev}" ]; then
+        if [[ -b "${zram_dev}" ]]; then
           INFO "Zram: initialized: ${zram_dev}"
           mkswap "${zram_dev}" &> /dev/null && \
           UNIT_NAME=$(gen_swap_unit What="${zram_dev}" Options=discard Priority="${zram_prio}" Tag=zram)
@@ -305,9 +305,9 @@ case "$1" in
       mkdir -p "${WORK_DIR}/swapd/"
       for device in $(blkid -t TYPE=swap -o device | grep -vE '(zram|loop)'); do
         for used_device in $(swapon --show=NAME --noheadings); do
-          [ "${device}" == "${used_device}" ] && unset device
+          [[ "${device}" == "${used_device}" ]] && unset device
         done
-        [ ! -b "${device}" ] && continue
+        [[ ! -b "${device}" ]] && continue
         UNIT_NAME=$(gen_swap_unit What="${device}" Options=discard Tag="swapd")
         systemctl daemon-reload
         systemctl start "${UNIT_NAME}" || continue
@@ -449,7 +449,7 @@ case "$1" in
 	(( --swapfc_priority ))
         systemctl daemon-reload
         systemctl start "${UNIT_NAME}"
-        [ -b "${swapfile}" ] && losetup -d "${swapfile}"
+        [[ -b "${swapfile}" ]] && losetup -d "${swapfile}"
         systemd-notify "STATUS=Monitoring memory status..."
       }
 
@@ -462,7 +462,7 @@ case "$1" in
             UNIT_NAME=$(basename "${UNIT_PATH}")
             systemctl stop "${UNIT_NAME}" || swapoff "${DEV}"
             rm -vf "${UNIT_PATH}"
-            [ -f "${DEV}" ] && rm -f "${DEV}"
+            [[ -f "${DEV}" ]] && rm -f "${DEV}"
           fi
         done
         (( --allocated ))
@@ -477,7 +477,7 @@ case "$1" in
       done
       (( allocated == 0 )) && INFO "swapFC: on-demand swap activation at >$(( RAM_SIZE * (100 - swapfc_free_ram_perc) / 104857600 )) MiB memory usage"
       # MAINLOOP
-      while [ -f "${WORK_DIR}/swapfc/.lock" ] && snore $polling_rate; do
+      while [[ -f "${WORK_DIR}/swapfc/.lock" ]] && snore $polling_rate; do
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
           (( curr_free_ram_perc < swapfc_free_ram_perc )) && create_swapfile \
@@ -494,7 +494,7 @@ case "$1" in
     fi
   ;;
   stop)
-    [ ! -f "${LOCK_STARTED}" ] && INFO_E "$0 already stopped"
+    [[ ! -f "${LOCK_STARTED}" ]] && INFO_E "$0 already stopped"
     systemd-notify "STOPPING=1"
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
       if grep -q swapd "${UNIT_PATH}"; then
@@ -505,7 +505,7 @@ case "$1" in
       fi
     done
 
-    [ -f "${WORK_DIR}/swapfc/.lock" ] && rm -vf "${WORK_DIR}/swapfc/.lock"
+    [[ -f "${WORK_DIR}/swapfc/.lock" ]] && rm -vf "${WORK_DIR}/swapfc/.lock"
 
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
       if grep -q swapfc "${UNIT_PATH}"; then
@@ -513,7 +513,7 @@ case "$1" in
         UNIT_NAME=$(basename "${UNIT_PATH}")
         swapoff "${DEV}"
         rm -vf "${UNIT_PATH}"
-        [ -f "${DEV}" ] && rm -f "${DEV}"
+        [[ -f "${DEV}" ]] && rm -f "${DEV}"
       fi
     done
 
@@ -528,7 +528,7 @@ case "$1" in
       fi
     done
 
-    if [ -d "${WORK_DIR}/zswap" ]; then
+    if [[ -d "${WORK_DIR}/zswap" ]]; then
       INFO "Zswap: restore configuration: start"
       for file in "${WORK_DIR}/zswap"/*; do
         read_l "${file}" > "${ZSWAP_M_P}/$(basename "${file}")"
@@ -546,7 +546,7 @@ case "$1" in
     SWAP_USED=$(( swap_stats[0] - swap_stats[1] ))
     unset swap_stats
 
-    if [ -d /sys/module/zswap ]; then
+    if [[ -d /sys/module/zswap ]]; then
       echo Zswap:
       read -r USED_BYTES < /sys/kernel/debug/zswap/pool_total_size
       USED_PAGES=$(( USED_BYTES / PAGE_SIZE ))
@@ -581,7 +581,7 @@ case "$1" in
         uniq
     fi
 
-    if [ -d /run/systemd/swap/swapd ]; then
+    if [[ -d /run/systemd/swap/swapd ]]; then
       echo swapD:
       swapon --raw --show TYPE | \
         grep -v 'zram\|file\|loop' | \
@@ -589,7 +589,7 @@ case "$1" in
         column -t
     fi
 
-    if [ -d /run/systemd/swap/swapfc ]; then
+    if [[ -d /run/systemd/swap/swapfc ]]; then
       echo swapFC:
       swapon --raw --show TYPE | \
         grep -e 'NAME\|file\|loop' | \
