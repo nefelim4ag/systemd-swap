@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
-set -o pipefail
+set -uo pipefail
 
 readonly DEBUG=0
 
