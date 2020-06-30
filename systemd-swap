@@ -22,7 +22,8 @@ YN(){
 
 write(){
   [[ -z "$1" || -z "$2" ]] && return
-  DATA="$1" FILE="$2"
+  local -r DATA="$1"
+  local -r FILE="$2"
   echo "${DATA}" > "${FILE}"
 }
 
@@ -31,15 +32,16 @@ write(){
 # in symbolic links
 write_l(){
   [[ -z "$1"  ||  -z "$2" ]] && return
-  DATA="$1" FILE="$2"
+  local DATA="$1"
+  local -r FILE="$2"
   DATA=$(echo "${DATA}" | base64)
   ln -sfr "/${DATA}" "${FILE}"
 }
 
 read_l(){
   [[ -z "$1" ]] && return
-  FILE="$1"
-  DATA=$(basename "$(realpath "${FILE}")")
+  local -r FILE="$1"
+  local DATA=$(basename "$(realpath "${FILE}")")
   echo "${DATA}" | base64 -d
 }
 
