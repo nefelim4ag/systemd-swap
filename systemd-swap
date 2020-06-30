@@ -440,7 +440,7 @@ case "$1" in
         (( ++allocated ))
         INFO "$1" $allocated
         swapfile=$(prepare_swapfile "${chunk_size}" "${swapfc_path}/${allocated}")
-        mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" | sed ':a;N;$!ba;s/)\n/), /g'
+        mkswap -L "SWAP_${FSTYPE}_${allocated}" "${swapfile}" &> /dev/null
         if YN ${swapfc_force_preallocated}; then
           UNIT_NAME=$(gen_swap_unit What="${swapfile}" Priority=$swapfc_priority Tag="swapfc_${allocated}")
         else
