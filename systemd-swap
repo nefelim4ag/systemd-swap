@@ -582,7 +582,7 @@ case $1 in
         uniq
     fi
 
-    if [[ -d /run/systemd/swap/swapd ]]; then
+    if [[ -d ${WORK_DIR}/swapd ]]; then
       echo swapD:
       swapon --raw --show TYPE | \
         grep -v 'zram\|file\|loop' | \
@@ -590,7 +590,7 @@ case $1 in
         column -t
     fi
 
-    if [[ -d /run/systemd/swap/swapfc ]]; then
+    if [[ -d ${WORK_DIR}/swapfc ]]; then
       echo swapFC:
       swapon --raw --show TYPE | \
         grep -e 'NAME\|file\|loop' | \
