@@ -240,15 +240,10 @@ case $1 in
       if [[ ! -d /sys/module/zram ]]; then
         INFO "Zram: not part of kernel, trying to find zram module"
         modprobe -n zram || ERRO "Zram: can't find zram module!"
-        # workaround for some zram initialization problems
-        for (( i = 0; i < 10; ++i )); do
-          [[ -d /sys/module/zram ]] && break
-          modprobe zram
-          snore 1
-        done
+        modprobe zram
         INFO "Zram: module successfully loaded"
       else
-        INFO "Zram: module already loaded"
+        INFO "Zram: module already loaded" && readonly ZRAM_ALREADY_SET=true
       fi
 
       systemctl daemon-reload
@@ -370,7 +365,7 @@ case $1 in
       if [[ $FSTYPE == btrfs ]]; then
         # if btrfs supports regular swap files(kernel version 5+), force disable COW to avoid data corruption
         # if it doesn't, use the old swap through loop workaround
-        (( KMAJOR >= 5 )) && swapfc_nocow=true || swapfc_force_use_loop=1
+        (( KMAJOR >= 5 )) && swapfc_nocow=true || swapfc_force_use_loop=true
       fi
 
       check_ENOSPC(){
@@ -528,6 +523,7 @@ case $1 in
         zramctl -r "${DEV}"
       fi
     done
+    [[ -v ZRAM_ALREADY_SET ]] || modprobe -r zram
 
     if [[ -d ${WORK_DIR}/zswap ]]; then
       INFO "Zswap: restore configuration: start"
