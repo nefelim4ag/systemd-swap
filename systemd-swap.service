@@ -26,6 +26,7 @@ ProtectSystem=full
 RestrictNamespaces=true
 RestrictSUIDSGID=true
 SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
 SystemCallFilter=@system-service @swap @module
 
 [Install]
