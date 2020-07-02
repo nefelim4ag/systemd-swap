@@ -477,12 +477,13 @@ case $1 in
         if (( allocated == 0 )); then
           curr_free_ram_perc=$(get_free_ram_perc)
           (( curr_free_ram_perc < swapfc_free_ram_perc )) && create_swapfile \
-          "swapFC: free ram: ${curr_free_ram_perc} < ${swapfc_free_ram_perc} - allocate chunk: "
+          "swapFC: free ram: $curr_free_ram_perc < $swapfc_free_ram_perc - allocate chunk: "
           continue
         fi
         curr_free_swap_perc=$(get_free_swap_perc)
         if (( curr_free_swap_perc < swapfc_free_swap_perc )) && (( allocated < swapfc_max_count )); then
-          create_swapfile "swapFC: free swap: ${curr_free_swap_perc} < ${swapfc_free_swap_perc} - allocate chunk: "
+          create_swapfile "swapFC: free swap: $curr_free_swap_perc < $swapfc_free_swap_perc - allocate chunk: "
+          continue
         fi
         (( allocated <= 2 )) || (( allocated <= swapfc_min_count )) && continue
         (( curr_free_swap_perc > swapfc_remove_free_swap_perc )) && destroy_swapfile
