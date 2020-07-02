@@ -66,7 +66,7 @@ get_mem_stat(){
 
 get_fs_type(){
   if [[ -d $1 ]]; then path=$1;
-  elif [[ -d $(dirname "$1") ]]; then path=$(dirname "$1");
+  elif [[ -d "${1%/*}" ]]; then path=${1%/*};
   else ERRO "swapfc_path is invalid"
   fi
   df "$path" --output=fstype | tail -n 1
@@ -222,7 +222,7 @@ case $1 in
       mkdir -p "${WORK_DIR}/zswap"
       for file in "${ZSWAP_M_P}"/*; do
         read -r VAL < "${file}"
-        write_l "${VAL}" "${WORK_DIR}/zswap/$(basename "${file}")"
+        write_l "${VAL}" "${WORK_DIR}/zswap/${file##*/}"
       done
       INFO "Zswap: backup current configuration: complete"
       INFO "Zswap: set new parameters: start"
@@ -289,7 +289,7 @@ case $1 in
       FIND_SWAP_UNITS | while read -r UNIT_PATH; do
         if grep -q systemd-gpt-auto-generator "${UNIT_PATH}"; then
           DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
-          UNIT_NAME=$(basename "${UNIT_PATH}")
+          UNIT_NAME=${UNIT_PATH##*/}
           swapoff "${DEV}"
           rm -vf "${UNIT_PATH}"
         fi
@@ -355,7 +355,7 @@ case $1 in
 
       FSTYPE=$(get_fs_type "${swapfc_path}")
       # must exists before stat()
-      mkdir -p "$(dirname "${swapfc_path}")"
+      mkdir -p "${swapfc_path%/*}"
       [[ $FSTYPE == btrfs ]] && { btrfs subvolume create "${swapfc_path}" \
 	      || mkdir -p "${swapfc_path}"; }
 
@@ -453,7 +453,7 @@ case $1 in
         FIND_SWAP_UNITS | while read -r UNIT_PATH; do
           if grep -q "swapfc_${allocated}" "${UNIT_PATH}"; then
             DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
-            UNIT_NAME=$(basename "${UNIT_PATH}")
+            UNIT_NAME=${UNIT_PATH##*/}
             systemctl stop "${UNIT_NAME}" || swapoff "${DEV}"
             rm -vf "${UNIT_PATH}"
             [[ -f ${DEV} ]] && rm -f "${DEV}"
@@ -495,7 +495,7 @@ case $1 in
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
       if grep -q swapd "${UNIT_PATH}"; then
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
-        UNIT_NAME=$(basename "${UNIT_PATH}")
+        UNIT_NAME=${UNIT_PATH##*/}
         swapoff "${DEV}"
         rm -vf "${UNIT_PATH}"
       fi
@@ -506,7 +506,7 @@ case $1 in
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
       if grep -q swapfc "${UNIT_PATH}"; then
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
-        UNIT_NAME=$(basename "${UNIT_PATH}")
+        UNIT_NAME=${UNIT_PATH##*/}
         swapoff "${DEV}"
         rm -vf "${UNIT_PATH}"
         [[ -f ${DEV} ]] && rm -f "${DEV}"
@@ -516,7 +516,7 @@ case $1 in
     FIND_SWAP_UNITS | while read -r UNIT_PATH; do
       if grep -q zram "${UNIT_PATH}"; then
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
-        UNIT_NAME=$(basename "${UNIT_PATH}")
+        UNIT_NAME=${UNIT_PATH##*/}
         INFO "Zram: swapoff ${DEV}"
         swapoff "${DEV}"
         rm -vf "${UNIT_PATH}"
@@ -528,7 +528,7 @@ case $1 in
     if [[ -d ${WORK_DIR}/zswap ]]; then
       INFO "Zswap: restore configuration: start"
       for file in "${WORK_DIR}/zswap"/*; do
-        read_l "${file}" > "${ZSWAP_M_P}/$(basename "${file}")"
+        read_l "${file}" > "${ZSWAP_M_P}/${file##*/}"
       done
       INFO "Zswap: restore configuration: complete"
     fi
