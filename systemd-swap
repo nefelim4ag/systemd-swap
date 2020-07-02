@@ -88,6 +88,13 @@ snore(){
   read -r ${1:+-t "$1"} -u $_snore_fd || :
 }
 
+get_kernel_ver(){
+  local version=$(</proc/version)
+  version=${version#*version}
+  version=${version%%(*}
+  echo $version
+}
+
 # Global variables
 # NCPU is being referenced inside of swap-default.conf
 # shellcheck disable=SC2034
@@ -105,7 +112,7 @@ readonly ZSWAP_M="/sys/module/zswap"
 readonly ZSWAP_M_P="/sys/module/zswap/parameters"
 
 # shellcheck disable=SC2034
-IFS=. read -r KMAJOR KMINOR _ <<< "$(uname -r)"
+IFS=. read -r KMAJOR KMINOR _ <<< $(get_kernel_ver)
 
 # Swap unit generator
 gen_swap_unit(){
