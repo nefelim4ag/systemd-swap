@@ -136,7 +136,8 @@ gen_swap_unit(){
     [[ ${What} =~ loop ]] && Type="File"
   fi
 
-  UNIT_NAME=$(systemd-escape -p "${What}")
+  UNIT_NAME="${What/\/}"
+  UNIT_NAME="${UNIT_NAME//\//-}"
   UNIT_PATH="${RUN_SYSD}/system/${UNIT_NAME}.swap"
   {
     echo '[Unit]'
@@ -192,7 +193,7 @@ case $1 in
           [[ -f ${conf} ]] && WARN "Permission denied reading: ${conf}"
           continue
         fi
-        a_conf[$(basename "${conf}")]="${conf}"
+        a_conf[${conf##*/}]="${conf}"
         DEBUG "found ${conf}"
       done
       DEBUG "Selected configuration artifacts: ${a_conf[*]}"
