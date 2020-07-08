@@ -148,6 +148,7 @@ gen_swap_unit(){
   fi
 
   UNIT_NAME="${What/\/}"
+  UNIT_NAME="${UNIT_NAME//-/\\x2d}"
   UNIT_NAME="${UNIT_NAME//\//-}"
   UNIT_PATH="${RUN_SYSD}/system/${UNIT_NAME}.swap"
   {
