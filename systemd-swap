@@ -509,8 +509,8 @@ case $1 in
   stop)
     [[ ! -f "${LOCK_STARTED}" ]] && INFO_E "$0 already stopped"
     systemd-notify "STOPPING=1"
-    local -r swap_units=$(FIND_SWAP_UNITS)
-    echo $swap_units | while read -r UNIT_PATH; do
+    readonly swap_units=$(FIND_SWAP_UNITS)
+    echo "$swap_units" | while read -r UNIT_PATH; do
       if grep -q swapd "${UNIT_PATH}"; then
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
         UNIT_NAME=${UNIT_PATH##*/}
@@ -521,7 +521,7 @@ case $1 in
 
     [[ -f ${WORK_DIR}/swapfc/.lock ]] && rm -f "${WORK_DIR}/swapfc/.lock"
 
-    echo $swap_units | while read -r UNIT_PATH; do
+    echo "$swap_units" | while read -r UNIT_PATH; do
       if grep -q swapfc "${UNIT_PATH}"; then
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
         UNIT_NAME=${UNIT_PATH##*/}
@@ -531,7 +531,7 @@ case $1 in
       fi
     done
 
-    echo $swap_units | while read -r UNIT_PATH; do
+    echo "$swap_units" | while read -r UNIT_PATH; do
       if grep -q zram "${UNIT_PATH}"; then
         DEV=$(GET_WHAT_FROM_SWAP_UNIT "${UNIT_PATH}")
         UNIT_NAME=${UNIT_PATH##*/}
