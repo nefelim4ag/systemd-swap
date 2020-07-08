@@ -69,7 +69,18 @@ get_fs_type(){
   elif [[ -d "${1%/*}" ]]; then path=${1%/*};
   else ERRO "swapfc_path is invalid"
   fi
-  df "$path" --output=fstype | tail -n 1
+
+  fstype=$(df "$path" --output=fstype | tail -n 1)
+
+  if [[ "$fstype" == "-" ]]; then
+    if btrfs subvolume show "$path" &>/dev/null; then
+      fstype=btrfs
+    else
+      ERRO "swapfc_path is located on an unknown filesystem"
+    fi
+  fi
+
+  echo $fstype
 }
 AMI_ROOT(){ [ "${UID}" == "0" ] || ERRO "Script must be run as root!"; }
 FIND_SWAP_UNITS(){ find /run/systemd/{system/,generator/} -type f -name "*.swap"; }
@@ -357,8 +368,11 @@ case $1 in
       FSTYPE=$(get_fs_type "${swapfc_path}")
       # must exists before stat()
       mkdir -p "${swapfc_path%/*}"
-      [[ $FSTYPE == btrfs ]] && { btrfs subvolume create "${swapfc_path}" \
-	      || mkdir -p "${swapfc_path}"; }
+      if [[ $FSTYPE == btrfs ]]; then
+        btrfs subvolume create "$swapfc_path" &>/dev/null
+      else
+        mkdir -p "$swapfc_path" 
+      fi
 
       CHUNK_SIZE=$(to_bytes "${swapfc_chunk_size}")
       BLOCK_SIZE=$(stat -f -c %s "${swapfc_path}")
