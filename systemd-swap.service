@@ -15,6 +15,7 @@ CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_MODULE
 DeviceAllow=block-zram rw
 DeviceAllow=block-sd r
 DeviceAllow=block-blkext r
+DeviceAllow=block-device-mapper r
 NoNewPrivileges=true
 PrivateNetwork=true
 ProtectClock=true
