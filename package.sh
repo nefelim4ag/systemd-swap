@@ -29,6 +29,9 @@ debian_package(){
     echo "Description: Script for creating hybrid swap space from zram swaps, swap files and swap partitions."
     echo "Rules-Requires-Root: no"
   } > "${DEB_NAME}/DEBIAN/control"
+  pushd "${DEB_NAME}"
+  find etc/ -type f > "DEBIAN/conffiles"
+  popd
   dpkg-deb --build --root-owner-group "${DEB_NAME}"
 }
 
