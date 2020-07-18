@@ -257,7 +257,7 @@ case $1 in
         for (( i = 0; i < 10; ++i )); do
           [[ -d /sys/module/zram ]] && break
           modprobe zram
-          snore 0.2
+          snore 1
         done
         INFO "Zram: module successfully loaded"
       else
