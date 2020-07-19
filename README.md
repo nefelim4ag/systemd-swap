@@ -82,15 +82,13 @@ sudo systemctl enable --now systemd-swap
 
 ## Switch on systemd-swap:s automatic swap management
 
-- Enable swapfc if wanted (note, you should **never** use zram and zswap at the same time, read more [here](https://www.google.com))
+- Enable swapfc if wanted (note, you should **never** use zram and zswap at the same time)
 
   ```shell
-  vim /etc/systemd/swap.conf
+  vim /etc/systemd/swap.conf.d/overrides.conf
   ```
 
   ```ini
-  zram_enabled=0
-  zswap_enabled=1
   swapfc_enabled=1
   ```
 
