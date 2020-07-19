@@ -29,9 +29,9 @@ sudo systemctl enable --now systemd-swap
 
 ## Install
 
-- <img src="https://www.monitorix.org/imgs/archlinux.png" weight="16" height="16"> **Arch**: in the [community](https://www.archlinux.org/packages/community/any/systemd-swap/).
+- <img src="https://www.monitorix.org/imgs/archlinux.png" weight="16" height="16"> **Arch Linux**: in the [community](https://www.archlinux.org/packages/community/any/systemd-swap/) repo.
 
-- <img src="https://www.monitorix.org/imgs/debian.png" weight="16" height="16"> **Debian**
+- <img src="https://www.monitorix.org/imgs/debian.png" weight="16" height="16"> **Debian based distros**
 
   ```shell
   git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
@@ -40,21 +40,11 @@ sudo systemctl enable --now systemd-swap
   sudo dpkg -i systemd-swap_*_all.deb
   ```
 
-- <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora**
+- <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora based distros**
 
   ```shell
-  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
-  cd systemd-swap
-  FEDORA_VERSION=f32 make rpm
-  sudo rpm -U systemd-swap-*noarch.rpm
-  ```
-
-- <img src="https://www.monitorix.org/imgs/centos.png" weight="16" height="16"> **CentOS**
-
-  ```shell
-  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
-  ./systemd-swap/package.sh centos
-  sudo rpm -U ./systemd-swap/systemd-swap-*noarch.rpm
+  dnf copr enable zeno/systemd-swap
+  dnf install systemd-swap
   ```
 
 - **Manual**
