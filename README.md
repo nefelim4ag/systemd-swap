@@ -43,8 +43,8 @@ sudo systemctl enable --now systemd-swap
 - <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora based distros**
 
   ```shell
-  dnf copr enable zeno/systemd-swap
-  dnf install systemd-swap
+  sudo dnf copr enable zeno/systemd-swap
+  sudo dnf install systemd-swap
   ```
 
 - **Manual**
