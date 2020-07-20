@@ -37,7 +37,7 @@ sudo systemctl enable --now systemd-swap
   git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
   cd systemd-swap
   make deb
-  sudo dpkg -i systemd-swap_*_all.deb
+  sudo apt install ./systemd-swap_*_all.deb
   ```
 
 - <img src="https://www.monitorix.org/imgs/fedora.png" weight="16" height="16"> **Fedora based distros**
