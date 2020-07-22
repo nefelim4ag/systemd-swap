@@ -7,10 +7,15 @@ INFO(){ echo -n "INFO: "; echo "$@" ;}
 WARN(){ echo -n "WARN: "; echo "$@" ;}
 ERRO(){ echo -n "ERRO: "; echo -n "$@" ; echo " Abort!"; exit 1;}
 
+get_version(){
+  VERSION=$(git describe --abbrev=0 --tags)
+  [ -z "${VERSION}" ] && ERRO "Can't get git tag, VERSION is empty!"
+  return 0
+}
+
 debian_package(){
   cd "$(dirname "$0")"
-  VERSION=$(git tag | tail -n 1)
-  [ -z "${VERSION}" ] && ERRO "Can't get git tag, VERSION are empty!"
+  get_version
   DEB_NAME="systemd-swap_${VERSION}_all"
   mkdir -p "${DEB_NAME}"
   DESTDIR="${DEB_NAME}"/ make install
@@ -41,8 +46,7 @@ archlinux_package(){
 
 centos_package(){
   cd "$(dirname "$0")"
-  VERSION=$(git tag | tail -n 1)
-  [ -z "${VERSION}" ] && ERRO "Can't get git tag, VERSION are empty!"
+  get_version
   test -d ./build && rm -rf ./build
   mkdir -p ./build/BUILD
   find . -type f ! -path './.git/*' ! -path './build/*' -exec cp {} build/BUILD \;
@@ -54,8 +58,7 @@ centos_package(){
 fedora_package(){
   cd "$(dirname "$0")"
   FEDORA_VERSION=$1
-  VERSION=$(git tag | tail -n 1)
-  [ -z "${VERSION}" ] && ERRO "Can't get git tag, VERSION are empty!"
+  get_version
   [ -z "${FEDORA_VERSION}" ] && ERRO "Please specify fedora version e.g.: $0 fedora f28"
   fedpkg --release "${FEDORA_VERSION}" local
   mv noarch/*.rpm ./
