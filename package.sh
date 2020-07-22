@@ -17,6 +17,7 @@ debian_package(){
   cd "$(dirname "$0")"
   get_version
   DEB_NAME="systemd-swap_${VERSION}_all"
+  rm -rf "${DEB_NAME}"
   mkdir -p "${DEB_NAME}"
   DESTDIR="${DEB_NAME}"/ make install
   mkdir -p  "${DEB_NAME}/DEBIAN"
@@ -38,6 +39,7 @@ debian_package(){
   find etc/ -type f > "DEBIAN/conffiles"
   popd
   dpkg-deb --build --root-owner-group "${DEB_NAME}"
+  rm -rf "${DEB_NAME}"
 }
 
 archlinux_package(){
