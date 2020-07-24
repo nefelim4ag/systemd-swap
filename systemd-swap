@@ -320,7 +320,7 @@ case $1 in
           [[ ${device} == "${used_device}" ]] && unset device
         done
         [[ ! -b ${device} ]] && continue
-        UNIT_NAME=$(gen_swap_unit What="${device}" Options=discard Tag="swapd")
+        UNIT_NAME=$(gen_swap_unit What="${device}" Options=discard Priority=$swapd_prio Tag="swapd")
         systemctl daemon-reload
         systemctl start "${UNIT_NAME}" || continue
         INFO "swapD: enabled device: ${device}"
