@@ -49,9 +49,9 @@ dirs: $(LIB_T)
 $(BIN_T): systemd-swap
 ifdef PATCH
 	@echo '** Patching prefix in systemd-swap..'
-	@sed -e 's#ETC_SYSD="/etc/systemd"#ETC_SYSD="$(sysconfdir)/systemd"#' \
-		-e 's#VEN_SYSD="/usr/lib/systemd"#VEN_SYSD="$(libdir)/systemd"#' \
-		-e 's#DEF_CONFIG="/usr/share/systemd-swap/swap-default.conf"#DEF_CONFIG="$(datarootdir)/systemd-swap/swap-default.conf"#' \
+	@sed -e 's#ETC_SYSD = "/etc/systemd"#ETC_SYSD = "$(sysconfdir)/systemd"#' \
+		-e 's#VEN_SYSD = "/usr/lib/systemd"#VEN_SYSD = "$(libdir)/systemd"#' \
+		-e 's#DEF_CONFIG = "/usr/share/systemd-swap/swap-default.conf"#DEF_CONFIG = "$(datarootdir)/systemd-swap/swap-default.conf"#' \
 	 	$< > systemd-swap.new
 	install -p -Dm755 systemd-swap.new $@
 else

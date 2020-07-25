@@ -28,7 +28,7 @@ debian_package(){
     echo "Section: custom"
     echo "Priority: optional"
     echo "Architecture: all"
-    echo "Depends: util-linux"
+    echo "Depends: util-linux, python3 (>= 3.7), python3-systemd, python3-sysv-ipc"
     echo "Essential: no"
     echo "Installed-Size: 16"
     echo "Maintainer: nefelim4ag@gmail.com"
