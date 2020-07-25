@@ -36,7 +36,7 @@ debian_package(){
     echo "Rules-Requires-Root: no"
   } > "${DEB_NAME}/DEBIAN/control"
   pushd "${DEB_NAME}"
-  find etc/ -type f > "DEBIAN/conffiles"
+  find etc/ -type f -exec echo /{} \; > "DEBIAN/conffiles"
   popd
   dpkg-deb --build --root-owner-group "${DEB_NAME}"
   rm -rf "${DEB_NAME}"
