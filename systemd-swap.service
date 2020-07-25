@@ -3,7 +3,7 @@ Description=Manage swap spaces on zram, files and partitions.
 
 [Service]
 Type=notify
-NotifyAccess=exec
+NotifyAccess=main
 ExecStart=/usr/bin/systemd-swap start
 ExecStop=/usr/bin/systemd-swap stop
 RemainAfterExit=true
@@ -16,6 +16,7 @@ DeviceAllow=block-blkext r
 DeviceAllow=block-device-mapper r
 DeviceAllow=block-loop rw
 DeviceAllow=block-sd r
+DeviceAllow=block-virtblk rw
 DeviceAllow=block-zram rw
 NoNewPrivileges=true
 PrivateNetwork=true

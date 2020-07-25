@@ -23,6 +23,9 @@ BuildRequires: systemd-units
 Requires: util-linux
 Requires: kmod
 Requires: kmod(zram.ko)
+Requires: python(abi) >= 3.7
+Requires: python3-systemd
+Requires: python3-sysv_ipc
 
 %description
 Systemd-swap manages the configuration of zram and zswap and allows for automatically setting up swap files through swapfc and automatically enables availible swapfiles and swap partitions.
