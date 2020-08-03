@@ -37,7 +37,7 @@ CNF_T := $(DESTDIR)$(sysconfdir)/systemd/swap.conf
 MAN5_T := $(DESTDIR)$(mandir)/man5/swap.conf.5
 MAN8_T := $(DESTDIR)$(mandir)/man8/systemd-swap.8
 
-.PHONY: files dirs install uninstall clean deb rpm help
+.PHONY: files dirs install uninstall clean deb rpm help reformat stylecheck stylediff
 
 default: help
 
@@ -113,6 +113,14 @@ deb: package.sh
 rpm: ## Create fedora package
 rpm: package.sh
 	./$< fedora $(FEDORA_VERSION)
+
+# Python Code Style
+reformat: ## Format code
+	python -m black systemd-swap
+stylecheck: ## Check codestyle
+	python -m black --check systemd-swap
+stylediff: ## Diff codestyle changes
+	python -m black --check --diff systemd-swap
 
 help: ## Show help
 	@grep -h "##" $(MAKEFILE_LIST) | grep -v grep | sed 's/\\$$//;s/##/\t/'
