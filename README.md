@@ -47,6 +47,14 @@ sudo systemctl enable --now systemd-swap
   sudo dnf copr enable zeno/systemd-swap
   sudo dnf install systemd-swap
   ```
+  
+  or
+  
+  ```shell
+  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
+  cd systemd-swap
+  make rpm
+  sudo dnf install ./systemd-swap-*noarch.rpm
 
 - **Manual**
 
@@ -56,6 +64,7 @@ sudo systemctl enable --now systemd-swap
 
   ```shell
   git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
+  cd systemd-swap
   sudo make install
 
   # or into /usr/local:
