@@ -758,10 +758,18 @@ def stop(on_init: bool = False) -> None:
             warn(f"{sys.argv[0]} might not be running")
     destroy_info = DestroyInfo.load()
     swap_units = find_swap_units()
+    # TODO: fix "swap_unit_found" workaround properly
+    swap_unit_found = None
     for unit_path in filter(lambda u: "swapd" in read(u), swap_units):
         swapoff(unit_path, "swapD")
+        swap_unit_found = True
+    if swap_unit_found == True:
+        swap_units = find_swap_units()
     for unit_path in filter(lambda u: "swapfc" in read(u), swap_units):
         swapoff(unit_path, "swapFC")
+        swap_unit_found = True
+    if swap_unit_found == True:
+        swap_units = find_swap_units()
     for unit_path in filter(lambda u: "zram" in read(u), swap_units):
         swapoff(unit_path, "Zram")
     if destroy_info:
