@@ -264,7 +264,15 @@ class SwapFc:
             stdout=subprocess.PIPE,
         ).stdout
         fs_type = output.splitlines()[1]
-        if fs_type == "-":
+        if fs_type == "btrfs":
+            ret_code = subprocess.run(
+                ["btrfs", "subvolume", "show", path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            if ret_code == 0 and path == self.swapfc_path:
+                subvolume = True
+        elif fs_type == "-":
             ret_code = subprocess.run(
                 ["btrfs", "subvolume", "show", path],
                 stdout=subprocess.DEVNULL,
