@@ -35,7 +35,7 @@ sudo systemctl enable --now systemd-swap
 - <img src="https://www.monitorix.org/imgs/debian.png" weight="16" height="16"> **Debian based distros**
 
   ```shell
-  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
+  git clone https://github.com/Nefelim4ag/systemd-swap.git
   cd systemd-swap
   make deb
   sudo apt install ./systemd-swap_*_all.deb
@@ -51,7 +51,7 @@ sudo systemctl enable --now systemd-swap
   or
   
   ```shell
-  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
+  git clone https://github.com/Nefelim4ag/systemd-swap.git
   cd systemd-swap
   make rpm
   sudo dnf install ./systemd-swap-*noarch.rpm
@@ -63,7 +63,7 @@ sudo systemctl enable --now systemd-swap
   - `python3` packages: `systemd` and `sysv_ipc`
 
   ```shell
-  git clone --depth=1 https://github.com/Nefelim4ag/systemd-swap.git
+  git clone https://github.com/Nefelim4ag/systemd-swap.git
   cd systemd-swap
   sudo make install
 
