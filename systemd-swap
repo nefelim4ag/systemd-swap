@@ -629,25 +629,30 @@ def start() -> None:
         for _ in range(config.get("zram_count", int)):
             info("Zram: trying to initialize free device")
             # zramctl is an external program -> return path to first free device.
-            output = subprocess.run(
-                [
-                    "zramctl",
-                    "-f",
-                    "-a",
-                    config.get("zram_alg"),
-                    "-t",
-                    config.get("zram_streams"),
-                    "-s",
-                    str(zram_size),
-                ],
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ).stdout.rstrip()
+            output = None
+            for n in range(2):
+                output = subprocess.run(
+                    [
+                        "zramctl",
+                        "-f",
+                        "-a",
+                        config.get("zram_alg"),
+                        "-t",
+                        config.get("zram_streams"),
+                        "-s",
+                        str(zram_size),
+                    ],
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                ).stdout.rstrip()
+                if "failed to reset: Device or resource busy" in output:
+                    time.sleep(1)
+                    continue
+                else:
+                    break
             zram_dev = None
-            if "failed to reset: Device or resource busy" in output:
-                time.sleep(1)
-            elif "zramctl: no free zram device found" in output:
+            if "zramctl: no free zram device found" in output:
                 warn("Zram: zramctl can't find free device")
                 info("Zram: using workaround hook for hot add")
                 if not os.path.isfile("/sys/class/zram-control/hot_add"):
