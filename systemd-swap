@@ -61,6 +61,10 @@ KMAJOR, KMINOR = [int(v) for v in os.uname().release.split(".")[0:2]]
 IS_DEBUG = False
 sigterm_event = threading.Event()
 
+# Should not be a global variable, rework necessary
+zswap_parameters = {}
+zram_already_set = None
+
 
 class Config:
     def __init__(self):
@@ -558,28 +562,52 @@ def init_directories() -> None:
 
 
 def start() -> None:
-    am_i_root()
-    # Clean up in case a previous instance did not exit cleanly.
-    stop(on_init=True)
-    init_directories()
-    sem = None
-    try:
-        # Semaphore guarding against running more than one instance and signalling if
-        # cleanup can start.
-        sem = sysv_ipc.Semaphore(get_sem_id(), flags=sysv_ipc.IPC_CREX)
-    except sysv_ipc.ExistentialError:
-        error(f"{sys.argv[0]} already started")
-    config = Config()
-    yn = lambda x: config.get(x, bool)
-    if yn("zram_enabled") and (
-        yn("zswap_enabled") or yn("swapfc_enabled") or yn("swapd_auto_swapon")
-    ):
-        warn(
-            "Combining zram with zswap/swapfc/swapd_auto_swapon can lead to LRU "
-            "inversion and is strongly recommended against"
-        )
-    zswap_parameters = {}
-    if yn("zswap_enabled"):
+    def start_swapd() -> None:
+        systemd.daemon.notify("STATUS=Activating swap units...")
+        info("swapD: pick up devices from systemd-gpt-auto-generator")
+        for unit_path in find_swap_units():
+            if "systemd-gpt-auto-generator" in read(unit_path):
+                dev = get_what_from_swap_unit(unit_path)
+                subprocess.run(["swapoff", dev], check=True)
+                force_remove(unit_path, verbose=True)
+        info("swapD: searching swap devices")
+        makedirs(f"{WORK_DIR}/swapd")
+        swapd_prio = config.get("swapd_prio", int)
+        # blkid returns 2 if nothing was found.
+        devices = subprocess.run(
+            ["blkid", "-t", "TYPE=swap", "-o", "device"],
+            text=True,
+            stdout=subprocess.PIPE,
+        ).stdout.splitlines()
+        for device in devices:
+            if "zram" in device or "loop" in device:
+                continue
+            used_devices = subprocess.run(
+                ["swapon", "--show=NAME", "--noheadings"],
+                check=True,
+                text=True,
+                stdout=subprocess.PIPE,
+            ).stdout.splitlines()
+            for used_device in used_devices:
+                if device == used_device:
+                    device = None
+            if device is None:
+                continue
+            mode = os.stat(device).st_mode
+            if not stat.S_ISBLK(mode):
+                continue
+            unit_name = gen_swap_unit(
+                what=device, options="discard", priority=swapd_prio, tag="swapd"
+            )
+            subprocess.run(["systemctl", "daemon-reload"], check=True)
+            ret_code = subprocess.run(["systemctl", "start", unit_name]).returncode
+            if ret_code != 0:
+                continue
+            info(f"swapD: enabled device: {device}")
+            swapd_prio -= 1
+        systemd.daemon.notify("STATUS=Swap unit activation finished")
+
+    def start_zswap() -> None:
         systemd.daemon.notify("STATUS=Setting up Zswap...")
         if not os.path.isdir(ZSWAP_M):
             error("Zswap - not supported on current kernel")
@@ -601,8 +629,8 @@ def start() -> None:
         write(config.get("zswap_max_pool_percent"), f"{ZSWAP_M_P}/max_pool_percent")
         write(config.get("zswap_zpool"), f"{ZSWAP_M_P}/zpool")
         info("Zswap: set new parameters: complete")
-    zram_already_set = None
-    if yn("zram_enabled"):
+
+    def start_zram() -> None:
         systemd.daemon.notify("STATUS=Setting up Zram...")
         info("Zram: check availability")
         if not os.path.isdir("/sys/module/zram"):
@@ -625,8 +653,8 @@ def start() -> None:
             zram_already_set = True
             info("Zram: module already loaded")
         subprocess.run(["systemctl", "daemon-reload"], check=True)
-        zram_size = round(config.get("zram_size", int) / config.get("zram_count", int))
-        for _ in range(config.get("zram_count", int)):
+
+        def zram_init() -> None:
             info("Zram: trying to initialize free device")
             output = None
             success = False
@@ -679,6 +707,7 @@ def start() -> None:
                 zram_dev = output
             else:
                 error(f"Zram: unexpected output from zramctl: {output}")
+
             mode = os.stat(zram_dev).st_mode
             if stat.S_ISBLK(mode):
                 info(f"Zram: initialized: {zram_dev}")
@@ -698,53 +727,46 @@ def start() -> None:
                     subprocess.run(["systemctl", "start", unit_name], check=True)
             else:
                 warn("Zram: can't get free zram device")
+
+        if KMAJOR <= 4 and KMINOR <= 7:
+            zram_size = round(
+                config.get("zram_size", int) / config.get("zram_count", int)
+            )
+            for _ in range(config.get("zram_count", int)):
+                zram_init()
+        else:
+            zram_size = config.get("zram_size", int)
+            zram_init()
         systemd.daemon.notify("STATUS=Zram setup finished")
+
+    am_i_root()
+    # Clean up in case a previous instance did not exit cleanly.
+    stop(on_init=True)
+    init_directories()
+    sem = None
+    try:
+        # Semaphore guarding against running more than one instance and signalling if
+        # cleanup can start.
+        sem = sysv_ipc.Semaphore(get_sem_id(), flags=sysv_ipc.IPC_CREX)
+    except sysv_ipc.ExistentialError:
+        error(f"{sys.argv[0]} already started")
+    config = Config()
+    yn = lambda x: config.get(x, bool)
+    if yn("zram_enabled") and (
+        yn("zswap_enabled") or yn("swapfc_enabled") or yn("swapd_auto_swapon")
+    ):
+        warn(
+            "Combining zram with zswap/swapfc/swapd_auto_swapon can lead to LRU "
+            "inversion and is strongly recommended against"
+        )
+    if yn("zswap_enabled"):
+        start_zswap()
+    if yn("zram_enabled"):
+        start_zram()
     info("Writing destroy info...")
     DestroyInfo(zswap_parameters, zram_already_set).save()
     if yn("swapd_auto_swapon"):
-        systemd.daemon.notify("STATUS=Activating swap units...")
-        info("swapD: pick up devices from systemd-gpt-auto-generator")
-        for unit_path in find_swap_units():
-            if "systemd-gpt-auto-generator" in read(unit_path):
-                dev = get_what_from_swap_unit(unit_path)
-                subprocess.run(["swapoff", dev], check=True)
-                force_remove(unit_path, verbose=True)
-        info("swapD: searching swap devices")
-        makedirs(f"{WORK_DIR}/swapd")
-        swapd_prio = config.get("swapd_prio", int)
-        # blkid returns 2 if nothing was found.
-        devices = subprocess.run(
-            ["blkid", "-t", "TYPE=swap", "-o", "device"],
-            text=True,
-            stdout=subprocess.PIPE,
-        ).stdout.splitlines()
-        for device in devices:
-            if "zram" in device or "loop" in device:
-                continue
-            used_devices = subprocess.run(
-                ["swapon", "--show=NAME", "--noheadings"],
-                check=True,
-                text=True,
-                stdout=subprocess.PIPE,
-            ).stdout.splitlines()
-            for used_device in used_devices:
-                if device == used_device:
-                    device = None
-            if device is None:
-                continue
-            mode = os.stat(device).st_mode
-            if not stat.S_ISBLK(mode):
-                continue
-            unit_name = gen_swap_unit(
-                what=device, options="discard", priority=swapd_prio, tag="swapd"
-            )
-            subprocess.run(["systemctl", "daemon-reload"], check=True)
-            ret_code = subprocess.run(["systemctl", "start", unit_name]).returncode
-            if ret_code != 0:
-                continue
-            info(f"swapD: enabled device: {device}")
-            swapd_prio -= 1
-        systemd.daemon.notify("STATUS=Swap unit activation finished")
+        start_swapd()
     if yn("swapfc_enabled"):
         swap_fc = SwapFc(config, sem)
         swap_fc.run()
