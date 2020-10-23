@@ -653,7 +653,6 @@ def start() -> None:
             zram_already_set = True
             info("Zram: module already loaded")
         subprocess.run(["systemctl", "daemon-reload"], check=True)
-        zram_size = round(config.get("zram_size", int) / config.get("zram_count", int))
 
         def zram_init() -> None:
             info("Zram: trying to initialize free device")
@@ -715,7 +714,14 @@ def start() -> None:
             else:
                 warn("Zram: can't get free zram device")
 
-        for _ in range(config.get("zram_count", int)):
+        if KMAJOR <= 4 and KMINOR <= 7:
+            zram_size = round(
+                config.get("zram_size", int) / config.get("zram_count", int)
+            )
+            for _ in range(config.get("zram_count", int)):
+                zram_init()
+        else:
+            zram_size = config.get("zram_size", int)
             zram_init()
         systemd.daemon.notify("STATUS=Zram setup finished")
 
