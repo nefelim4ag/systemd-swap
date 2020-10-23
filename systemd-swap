@@ -670,7 +670,8 @@ def start() -> None:
                         "modprobe rule"
                     )
                 new_zram = read("/sys/class/zram-control/hot_add").rstrip()
-                info(f"Zram: success: new device /dev/zram{new_zram}")
+                zram_dev = f"/dev/zram{new_zram}"
+                info(f"Zram: success: new device {zram_dev}")
             elif "/dev/zram" in output:
                 mode = os.stat(output).st_mode
                 if not stat.S_ISBLK(mode):
