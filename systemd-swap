@@ -265,9 +265,7 @@ case $1 in
       fi
 
       systemctl daemon-reload
-      # spread total capacity over all devices
-      zram_size=$(( zram_size / zram_count ))
-      for (( i = 0; i < zram_count; ++i )); do
+      zram_init(){
         INFO "Zram: trying to initialize free device"
         # zramctl is an external program -> return path to first free device
         OUTPUT=$(zramctl -f -a "${zram_alg}" -t "${zram_streams}" -s "${zram_size}" 2>&1)
@@ -297,7 +295,16 @@ case $1 in
         else
           WARN "Can't get free Zram device"
         fi
-      done
+      }
+      if (( $KMAJOR <= 4 )) && (( $KMINOR <= 7 )); then
+        # spread total capacity over all devices
+        zram_size=$(( zram_size / zram_count ))
+        for (( i = 0; i < zram_count; ++i )); do
+          zram_init
+        done
+      else
+        zram_init
+      fi
       systemd-notify "STATUS=Zram setup finished"
     fi
 
