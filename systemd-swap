@@ -628,9 +628,13 @@ def start() -> None:
         zram_size = round(config.get("zram_size", int) / config.get("zram_count", int))
         for _ in range(config.get("zram_count", int)):
             info("Zram: trying to initialize free device")
-            # zramctl is an external program -> return path to first free device.
             output = None
-            for n in range(2):
+            success = False
+            for n in range(3):
+                if n > 0:
+                    warn(f"Zram: device or resource was busy, retry #{n}")
+                    time.sleep(1)
+                # zramctl is an external program -> return path to first free device.
                 output = subprocess.run(
                     [
                         "zramctl",
@@ -647,10 +651,14 @@ def start() -> None:
                     stderr=subprocess.STDOUT,
                 ).stdout.rstrip()
                 if "failed to reset: Device or resource busy" in output:
-                    time.sleep(1)
                     continue
                 else:
+                    success = True
                     break
+            # Try limit reached.
+            if not success:
+                warn("Zram: device or resource was busy too many times")
+                continue
             zram_dev = None
             if "zramctl: no free zram device found" in output:
                 warn("Zram: zramctl can't find free device")
