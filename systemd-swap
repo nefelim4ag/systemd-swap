@@ -61,6 +61,10 @@ KMAJOR, KMINOR = [int(v) for v in os.uname().release.split(".")[0:2]]
 IS_DEBUG = False
 sigterm_event = threading.Event()
 
+# Should not be a global variable, rework necessary
+zswap_parameters = {}
+zram_already_set = None
+
 
 class Config:
     def __init__(self):
@@ -558,136 +562,7 @@ def init_directories() -> None:
 
 
 def start() -> None:
-    am_i_root()
-    # Clean up in case a previous instance did not exit cleanly.
-    stop(on_init=True)
-    init_directories()
-    sem = None
-    try:
-        # Semaphore guarding against running more than one instance and signalling if
-        # cleanup can start.
-        sem = sysv_ipc.Semaphore(get_sem_id(), flags=sysv_ipc.IPC_CREX)
-    except sysv_ipc.ExistentialError:
-        error(f"{sys.argv[0]} already started")
-    config = Config()
-    yn = lambda x: config.get(x, bool)
-    if yn("zram_enabled") and (
-        yn("zswap_enabled") or yn("swapfc_enabled") or yn("swapd_auto_swapon")
-    ):
-        warn(
-            "Combining zram with zswap/swapfc/swapd_auto_swapon can lead to LRU "
-            "inversion and is strongly recommended against"
-        )
-    zswap_parameters = {}
-    if yn("zswap_enabled"):
-        systemd.daemon.notify("STATUS=Setting up Zswap...")
-        if not os.path.isdir(ZSWAP_M):
-            error("Zswap - not supported on current kernel")
-        info("Zswap: backup current configuration: start")
-        makedirs(f"{WORK_DIR}/zswap")
-        for file in os.listdir(ZSWAP_M_P):
-            file_path = os.path.join(ZSWAP_M_P, file)
-            zswap_parameters[file_path] = read(file_path)
-        info("Zswap: backup current configuration: complete")
-        info("Zswap: set new parameters: start")
-        info(
-            f'Zswap: Enable: {config.get("zswap_enabled")}, Comp: '
-            f'{config.get("zswap_compressor")}, Max pool %: '
-            f'{config.get("zswap_max_pool_percent")}, Zpool: '
-            f'{config.get("zswap_zpool")}'
-        )
-        write(config.get("zswap_enabled"), f"{ZSWAP_M_P}/enabled")
-        write(config.get("zswap_compressor"), f"{ZSWAP_M_P}/compressor")
-        write(config.get("zswap_max_pool_percent"), f"{ZSWAP_M_P}/max_pool_percent")
-        write(config.get("zswap_zpool"), f"{ZSWAP_M_P}/zpool")
-        info("Zswap: set new parameters: complete")
-    zram_already_set = None
-    if yn("zram_enabled"):
-        systemd.daemon.notify("STATUS=Setting up Zram...")
-        info("Zram: check availability")
-        if not os.path.isdir("/sys/module/zram"):
-            zram_already_set = False
-            info("Zram: not part of kernel, trying to find zram module")
-            ret_code = subprocess.run(["modprobe", "-n", "zram"]).returncode
-            if ret_code != 0:
-                error("Zram: can't find zram module!")
-            zram_initialized = False
-            for _ in range(10):
-                ret_code = subprocess.run(["modprobe", "zram"]).returncode
-                if ret_code == 0:
-                    zram_initialized = True
-                    info("Zram: module successfully loaded")
-                    break
-                time.sleep(1)
-            if not zram_initialized:
-                error("Zram: can't load zram module")
-        else:
-            zram_already_set = True
-            info("Zram: module already loaded")
-        subprocess.run(["systemctl", "daemon-reload"], check=True)
-        zram_size = round(config.get("zram_size", int) / config.get("zram_count", int))
-        for _ in range(config.get("zram_count", int)):
-            info("Zram: trying to initialize free device")
-            # zramctl is an external program -> return path to first free device.
-            output = subprocess.run(
-                [
-                    "zramctl",
-                    "-f",
-                    "-a",
-                    config.get("zram_alg"),
-                    "-t",
-                    config.get("zram_streams"),
-                    "-s",
-                    str(zram_size),
-                ],
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            ).stdout.rstrip()
-            zram_dev = None
-            if "failed to reset: Device or resource busy" in output:
-                time.sleep(1)
-            elif "zramctl: no free zram device found" in output:
-                warn("Zram: zramctl can't find free device")
-                info("Zram: using workaround hook for hot add")
-                if not os.path.isfile("/sys/class/zram-control/hot_add"):
-                    error(
-                        "Zram: this kernel does not support hot adding zram devices, "
-                        "please use a 4.2+ kernel or see 'modinfo zram´ and create a "
-                        "modprobe rule"
-                    )
-                new_zram = read("/sys/class/zram-control/hot_add").rstrip()
-                info(f"Zram: success: new device /dev/zram{new_zram}")
-            elif "/dev/zram" in output:
-                mode = os.stat(output).st_mode
-                if not stat.S_ISBLK(mode):
-                    continue
-                zram_dev = output
-            else:
-                error(f"Zram: unexpected output from zramctl: {output}")
-            mode = os.stat(zram_dev).st_mode
-            if stat.S_ISBLK(mode):
-                info(f"Zram: initialized: {zram_dev}")
-                ret_code = subprocess.run(
-                    ["mkswap", zram_dev],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                ).returncode
-                if ret_code == 0:
-                    unit_name = gen_swap_unit(
-                        what=zram_dev,
-                        options="discard",
-                        priority=config.get("zram_prio"),
-                        tag="zram",
-                    )
-                    subprocess.run(["systemctl", "daemon-reload"], check=True)
-                    subprocess.run(["systemctl", "start", unit_name], check=True)
-            else:
-                warn("Zram: can't get free zram device")
-        systemd.daemon.notify("STATUS=Zram setup finished")
-    info("Writing destroy info...")
-    DestroyInfo(zswap_parameters, zram_already_set).save()
-    if yn("swapd_auto_swapon"):
+    def start_swapd() -> None:
         systemd.daemon.notify("STATUS=Activating swap units...")
         info("swapD: pick up devices from systemd-gpt-auto-generator")
         for unit_path in find_swap_units():
@@ -731,6 +606,147 @@ def start() -> None:
             info(f"swapD: enabled device: {device}")
             swapd_prio -= 1
         systemd.daemon.notify("STATUS=Swap unit activation finished")
+
+    def start_zswap() -> None:
+        systemd.daemon.notify("STATUS=Setting up Zswap...")
+        if not os.path.isdir(ZSWAP_M):
+            error("Zswap - not supported on current kernel")
+        info("Zswap: backup current configuration: start")
+        makedirs(f"{WORK_DIR}/zswap")
+        for file in os.listdir(ZSWAP_M_P):
+            file_path = os.path.join(ZSWAP_M_P, file)
+            zswap_parameters[file_path] = read(file_path)
+        info("Zswap: backup current configuration: complete")
+        info("Zswap: set new parameters: start")
+        info(
+            f'Zswap: Enable: {config.get("zswap_enabled")}, Comp: '
+            f'{config.get("zswap_compressor")}, Max pool %: '
+            f'{config.get("zswap_max_pool_percent")}, Zpool: '
+            f'{config.get("zswap_zpool")}'
+        )
+        write(config.get("zswap_enabled"), f"{ZSWAP_M_P}/enabled")
+        write(config.get("zswap_compressor"), f"{ZSWAP_M_P}/compressor")
+        write(config.get("zswap_max_pool_percent"), f"{ZSWAP_M_P}/max_pool_percent")
+        write(config.get("zswap_zpool"), f"{ZSWAP_M_P}/zpool")
+        info("Zswap: set new parameters: complete")
+
+    def start_zram() -> None:
+        systemd.daemon.notify("STATUS=Setting up Zram...")
+        info("Zram: check availability")
+        if not os.path.isdir("/sys/module/zram"):
+            zram_already_set = False
+            info("Zram: not part of kernel, trying to find zram module")
+            ret_code = subprocess.run(["modprobe", "-n", "zram"]).returncode
+            if ret_code != 0:
+                error("Zram: can't find zram module!")
+            zram_initialized = False
+            for _ in range(10):
+                ret_code = subprocess.run(["modprobe", "zram"]).returncode
+                if ret_code == 0:
+                    zram_initialized = True
+                    info("Zram: module successfully loaded")
+                    break
+                time.sleep(1)
+            if not zram_initialized:
+                error("Zram: can't load zram module")
+        else:
+            zram_already_set = True
+            info("Zram: module already loaded")
+        subprocess.run(["systemctl", "daemon-reload"], check=True)
+        zram_size = round(config.get("zram_size", int) / config.get("zram_count", int))
+
+        def zram_init() -> None:
+            info("Zram: trying to initialize free device")
+            # zramctl is an external program -> return path to first free device.
+            output = subprocess.run(
+                [
+                    "zramctl",
+                    "-f",
+                    "-a",
+                    config.get("zram_alg"),
+                    "-t",
+                    config.get("zram_streams"),
+                    "-s",
+                    str(zram_size),
+                ],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            ).stdout.rstrip()
+            zram_dev = None
+            if "failed to reset: Device or resource busy" in output:
+                time.sleep(1)
+            elif "zramctl: no free zram device found" in output:
+                warn("Zram: zramctl can't find free device")
+                info("Zram: using workaround hook for hot add")
+                if not os.path.isfile("/sys/class/zram-control/hot_add"):
+                    error(
+                        "Zram: this kernel does not support hot adding zram devices, "
+                        "please use a 4.2+ kernel or see 'modinfo zram´ and create a "
+                        "modprobe rule"
+                    )
+                new_zram = read("/sys/class/zram-control/hot_add").rstrip()
+                info(f"Zram: success: new device /dev/zram{new_zram}")
+            elif "/dev/zram" in output:
+                mode = os.stat(output).st_mode
+                if not stat.S_ISBLK(mode):
+                    continue
+                zram_dev = output
+            else:
+                error(f"Zram: unexpected output from zramctl: {output}")
+
+            mode = os.stat(zram_dev).st_mode
+            if stat.S_ISBLK(mode):
+                info(f"Zram: initialized: {zram_dev}")
+                ret_code = subprocess.run(
+                    ["mkswap", zram_dev],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                ).returncode
+                if ret_code == 0:
+                    unit_name = gen_swap_unit(
+                        what=zram_dev,
+                        options="discard",
+                        priority=config.get("zram_prio"),
+                        tag="zram",
+                    )
+                    subprocess.run(["systemctl", "daemon-reload"], check=True)
+                    subprocess.run(["systemctl", "start", unit_name], check=True)
+            else:
+                warn("Zram: can't get free zram device")
+
+        for _ in range(config.get("zram_count", int)):
+            zram_init()
+        systemd.daemon.notify("STATUS=Zram setup finished")
+
+    am_i_root()
+    # Clean up in case a previous instance did not exit cleanly.
+    stop(on_init=True)
+    init_directories()
+    sem = None
+    try:
+        # Semaphore guarding against running more than one instance and signalling if
+        # cleanup can start.
+        sem = sysv_ipc.Semaphore(get_sem_id(), flags=sysv_ipc.IPC_CREX)
+    except sysv_ipc.ExistentialError:
+        error(f"{sys.argv[0]} already started")
+    config = Config()
+    yn = lambda x: config.get(x, bool)
+    if yn("zram_enabled") and (
+        yn("zswap_enabled") or yn("swapfc_enabled") or yn("swapd_auto_swapon")
+    ):
+        warn(
+            "Combining zram with zswap/swapfc/swapd_auto_swapon can lead to LRU "
+            "inversion and is strongly recommended against"
+        )
+    if yn("zswap_enabled"):
+        start_zswap()
+    if yn("zram_enabled"):
+        start_zram()
+    info("Writing destroy info...")
+    DestroyInfo(zswap_parameters, zram_already_set).save()
+    if yn("swapd_auto_swapon"):
+        start_swapd()
     if yn("swapfc_enabled"):
         swap_fc = SwapFc(config, sem)
         swap_fc.run()
