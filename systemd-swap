@@ -686,7 +686,7 @@ def start() -> None:
             # Try limit reached.
             if not success:
                 warn("Zram: device or resource was busy too many times")
-                continue
+                return
             zram_dev = None
             if "zramctl: no free zram device found" in output:
                 warn("Zram: zramctl can't find free device")
@@ -703,7 +703,7 @@ def start() -> None:
             elif "/dev/zram" in output:
                 mode = os.stat(output).st_mode
                 if not stat.S_ISBLK(mode):
-                    continue
+                    return
                 zram_dev = output
             else:
                 error(f"Zram: unexpected output from zramctl: {output}")
