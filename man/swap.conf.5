@@ -23,8 +23,7 @@ To disable a configuration file supplied by the vendor, the recommended way is t
 The following options are available in the "zswap" section:
 .I
 .IP zswap_enabled=
-Whether zswap is enabled, set to yes/y/1/true to enable zswap.
-Zswap is a compressed
+Whether zswap is enabled, set to yes/y/1/true to enable zswap. Zswap is a compressed
 .B writeback cache
 for swap files and swap partitions.
 .I
@@ -46,8 +45,7 @@ Set wich compressed memory pool to use, if unsure use z3fold.
 The following options are available in the "zram" section:
 .I
 .IP zram_enabled=
-Whether zram is enabled, set to yes/y/1/true to enable zram.
-Zram is a compressed
+Whether zram is enabled, set to yes/y/1/true to enable zram. Zram is a compressed
 .B ram
 disk.
 .I
@@ -55,7 +53,7 @@ disk.
 Set the ammount of memory per zram device.
 .I
 .IP zram_count=
-Set the ammount of zram devices.
+Set the ammount of zram devices. (IGNORED IF KVER > 4.8, TO BE REMOVED)
 .I
 .IP zram_alg=
 Compressor algorithm for zram, Linux currently supports
@@ -75,7 +73,7 @@ The following options are available in the "swapfc" section:
 Whether swapfc is enabled, set to yes/y/1/true to enable swapfc. Swapfc stands for "swap file chunked" and dynamically allocates new swap files when memory is running low and removes its swap files when not in use.
 .I
 .IP swapfc_force_use_loop=
-Whether swapfc should always create swap files on loopback devices.
+Whether swapfc should always create swap files on loopback devices. Usefull on if kernel doesn't support swapfiles on btrfs (<5.0), don't use unless you're sure what you are doing
 .I
 .IP swapfc_frequency=
 The frequency in seconds swapfc should run at.
@@ -84,11 +82,10 @@ The frequency in seconds swapfc should run at.
 Size of the swap files created by swapfc.
 .I
 .IP swapfc_max_count=
-Maximum number of swap files swapfc should create (note that linux by defaults only supports 32).
+Maximum number of swap files swapfc should create. (Note that Linux by defaults only supports 32.)
 .I
 .IP swapfc_min_count=
-Minimum number of swap files swapfc should create on startup.
-Defaults to 0 to only allocate swap files when running lon free memory.
+Minimum number of swap files swapfc should create on startup. Defaults to 0 to only allocate swap files when running lon free memory.
 .I
 .IP swapfc_free_ram_perc=
 Ammount of memory free (in percent) when swapfc creates a new swap file. (Note that this applies only to the first swap file.)
