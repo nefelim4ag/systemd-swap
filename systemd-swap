@@ -669,8 +669,6 @@ def start() -> None:
                         "-f",
                         "-a",
                         config.get("zram_alg"),
-                        "-t",
-                        config.get("zram_streams"),
                         "-s",
                         str(zram_size),
                     ],
