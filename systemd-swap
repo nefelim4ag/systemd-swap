@@ -63,7 +63,6 @@ sigterm_event = threading.Event()
 
 # Should not be a global variable, rework necessary
 zswap_parameters = {}
-zram_already_set = None
 
 
 class Config:
@@ -130,17 +129,11 @@ class Config:
 class DestroyInfo:
     pickle_path = f"{WORK_DIR}/destroy_info.pickle"
 
-    def __init__(
-        self, zswap_parameters: Dict[str, str], zram_already_set: Optional[bool]
-    ):
+    def __init__(self, zswap_parameters: Dict[str, str]):
         self.zswap_parameters = zswap_parameters
-        self.zram_already_set = zram_already_set
 
     def get_zswap_parameters(self) -> Dict[str, str]:
         return self.zswap_parameters
-
-    def get_zram_already_set(self) -> bool:
-        return self.zram_already_set
 
     def save(self) -> None:
         with open(self.pickle_path, "wb") as f:
@@ -632,27 +625,11 @@ def start() -> None:
 
     def start_zram() -> None:
         systemd.daemon.notify("STATUS=Setting up Zram...")
-        info("Zram: check availability")
+        info("Zram: check module availability")
         if not os.path.isdir("/sys/module/zram"):
-            zram_already_set = False
-            info("Zram: not part of kernel, trying to find zram module")
-            ret_code = subprocess.run(["modprobe", "-n", "zram"]).returncode
-            if ret_code != 0:
-                error("Zram: can't find zram module!")
-            zram_initialized = False
-            for _ in range(10):
-                ret_code = subprocess.run(["modprobe", "zram"]).returncode
-                if ret_code == 0:
-                    zram_initialized = True
-                    info("Zram: module successfully loaded")
-                    break
-                time.sleep(1)
-            if not zram_initialized:
-                error("Zram: can't load zram module")
+            error("Zram: module not availible")
         else:
-            zram_already_set = True
-            info("Zram: module already loaded")
-        subprocess.run(["systemctl", "daemon-reload"], check=True)
+            info("Zram: module found!")
 
         def zram_init() -> None:
             info("Zram: trying to initialize free device")
@@ -762,7 +739,7 @@ def start() -> None:
     if yn("zram_enabled"):
         start_zram()
     info("Writing destroy info...")
-    DestroyInfo(zswap_parameters, zram_already_set).save()
+    DestroyInfo(zswap_parameters).save()
     if yn("swapd_auto_swapon"):
         start_swapd()
     if yn("swapfc_enabled"):
@@ -809,9 +786,6 @@ def stop(on_init: bool = False) -> None:
     for unit_path in filter(lambda u: "zram" in read(u), swap_units):
         swapoff(unit_path, "Zram")
     if destroy_info:
-        if destroy_info.zram_already_set == False:
-            info("Zram: unloading kernel module...")
-            subprocess.run(["modprobe", "-r", "zram"])
         if os.path.isdir(f"{WORK_DIR}/zswap"):
             info("Zswap: restore configuration: start")
             for zswap_parameter, value in destroy_info.zswap_parameters.items():

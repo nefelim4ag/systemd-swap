@@ -1,5 +1,7 @@
 [Unit]
 Description=Manage swap spaces on zram, files and partitions.
+Wants=modprobe@zram.service
+After=modprobe@zram.service
 
 [Service]
 Type=notify
@@ -10,7 +12,7 @@ TimeoutStopSec=600
 OOMScoreAdjust=-1000
 CPUSchedulingPolicy=fifo
 CPUSchedulingPriority=20
-CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_MODULE
+CapabilityBoundingSet=CAP_SYS_ADMIN
 DeviceAllow=block-blkext r
 DeviceAllow=block-device-mapper r
 DeviceAllow=block-loop rw
@@ -29,7 +31,7 @@ RestrictNamespaces=true
 RestrictSUIDSGID=true
 SystemCallArchitectures=native
 SystemCallErrorNumber=EPERM
-SystemCallFilter=@system-service @swap @module
+SystemCallFilter=@system-service @swap
 
 [Install]
 WantedBy=multi-user.target
