@@ -60,7 +60,7 @@ sudo systemctl enable --now systemd-swap
 
   Install dependencies:
   - `python3` >= 3.7
-  - `python3` packages: `systemd` and `sysv_ipc`
+  - `python3` packages: `systemd-python` and `sysv_ipc`
 
   ```shell
   git clone https://github.com/Nefelim4ag/systemd-swap.git
