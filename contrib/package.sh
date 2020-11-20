@@ -14,7 +14,6 @@ get_version(){
 }
 
 debian_package(){
-  cd "$(dirname "$0")"
   get_version
   DEB_NAME="systemd-swap_${VERSION}_all"
   rm -rf "${DEB_NAME}"
@@ -47,23 +46,25 @@ archlinux_package(){
 }
 
 centos_package(){
-  cd "$(dirname "$0")"
   get_version
-  test -d ./build && rm -rf ./build
+  [[ -d ./build ]] && rm -rf ./build
   mkdir -p ./build/BUILD
-  find . -type f ! -path './.git/*' ! -path './build/*' -exec cp {} build/BUILD \;
-  rpmbuild --define "_topdir $(pwd)/build" -bb systemd-swap.spec
+  for i in Makefile LICENSE src man include contrib; do cp -r $i build/BUILD/$i; done
+  #find . ! -path './.git/*' ! -path './build/*' -exec cp {} build/BUILD \;
+  rpmbuild --define "_topdir $(pwd)/build" -bb contrib/systemd-swap.spec
   mv build/RPMS/noarch/*.rpm ./
   rm -rf ./build
 }
 
 fedora_package(){
-  cd "$(dirname "$0")"
   FEDORA_VERSION=$1
   get_version
   [ -z "${FEDORA_VERSION}" ] && ERRO "Please specify fedora version e.g.: $0 fedora f28"
+  ln -s contrib/systemd-swap.spec systemd-swap.spec
+  cp src/systemd-swap.py systemd-swap.py
   fedpkg --release "${FEDORA_VERSION}" local
   mv noarch/*.rpm ./
+  rm systemd-swap.spec systemd-swap.py
   rmdir noarch
   rm ./*.src.rpm
 }

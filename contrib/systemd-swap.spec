@@ -10,7 +10,7 @@ Release: 0.git%{commit}%{?dist}
 URL: https://github.com/Nefelim4ag/systemd-swap/
 License: GPLv3+
 
-Source: %{name}
+Source: %{name}.py
 BuildArch: noarch
 
 %if 0%{?fedora} >= 31
@@ -48,7 +48,6 @@ Systemd-swap manages the configuration of zram and zswap and allows for automati
 
 %files
 %license LICENSE
-%doc README.md
 %config(noreplace) %{_sysconfdir}/systemd/swap.conf
 %{_unitdir}/%{name}.service
 %{_bindir}/%{name}

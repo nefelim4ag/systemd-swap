@@ -46,7 +46,7 @@ $(LIB_T):
 
 dirs: $(LIB_T)
 
-$(BIN_T): systemd-swap.py
+$(BIN_T): src/systemd-swap.py
 ifdef PATCH
 	@echo '** Patching prefix in systemd-swap..'
 	@sed -e 's#ETC_SYSD = "/etc/systemd"#ETC_SYSD = "$(sysconfdir)/systemd"#' \
@@ -58,7 +58,7 @@ else
 	install -p -Dm755 $< $@
 endif
 
-$(SVC_T): systemd-swap.service
+$(SVC_T): include/systemd-swap.service
 ifdef PATCH
 	@echo '** Patching prefix in systemd-swap.service..'
 	@sed 's#/usr/bin/systemd-swap#$(bindir)/systemd-swap#g' $< > systemd-swap.service.new
@@ -67,7 +67,7 @@ else
 	install -p -Dm644 $< $@
 endif
 
-$(DFL_T): swap-default.conf
+$(DFL_T): include/swap-default.conf
 	install -p -Dm644 $< $@
 
 $(CNF_T): swap.conf
@@ -86,7 +86,7 @@ endef
 swap.conf: ## Generate swap.conf
 	@echo '** Generating swap.conf..'
 	@printf "$(banner)" > $@
-	@grep -o '^[^#]*' swap-default.conf | sed 's/^/#/;s/[ \t]*$$//' >> $@
+	@grep -o '^[^#]*' include/swap-default.conf | sed 's/^/#/;s/[ \t]*$$//' >> $@
 
 files: $(BIN_T) $(SVC_T) $(DFL_T) $(CNF_T) $(MAN5_T) $(MAN8_T)
 
@@ -107,20 +107,20 @@ else
 endif
 
 deb: ## Create debian package
-deb: package.sh
+deb: contrib/package.sh
 	./$< debian
 
 rpm: ## Create fedora package
-rpm: package.sh
+rpm: contrib/package.sh
 	./$< fedora $(FEDORA_VERSION)
 
 # Python Code Style
 reformat: ## Format code
-	python -m black systemd-swap.py
+	python -m black src/systemd-swap.py
 stylecheck: ## Check codestyle
-	python -m black --check systemd-swap.py
+	python -m black --check src/systemd-swap.py
 stylediff: ## Diff codestyle changes
-	python -m black --check --diff systemd-swap.py
+	python -m black --check --diff src/systemd-swap.py
 
 help: ## Show help
 	@grep -h "##" $(MAKEFILE_LIST) | grep -v grep | sed 's/\\$$//;s/##/\t/'
