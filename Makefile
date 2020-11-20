@@ -18,7 +18,7 @@ mandir ?= $(datarootdir)/man
 sysconfdir ?= $(prefix)/etc
 localstatedir ?= $(prefix)/var
 
-FEDORA_VERSION ?= f32
+FEDORA_VERSION ?= f33
 
 GITB := $(shell command -v git 2>/dev/null)
 ifdef GITB
