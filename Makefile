@@ -46,7 +46,7 @@ $(LIB_T):
 
 dirs: $(LIB_T)
 
-$(BIN_T): systemd-swap
+$(BIN_T): systemd-swap.py
 ifdef PATCH
 	@echo '** Patching prefix in systemd-swap..'
 	@sed -e 's#ETC_SYSD = "/etc/systemd"#ETC_SYSD = "$(sysconfdir)/systemd"#' \
@@ -116,11 +116,11 @@ rpm: package.sh
 
 # Python Code Style
 reformat: ## Format code
-	python -m black systemd-swap
+	python -m black systemd-swap.py
 stylecheck: ## Check codestyle
-	python -m black --check systemd-swap
+	python -m black --check systemd-swap.py
 stylediff: ## Diff codestyle changes
-	python -m black --check --diff systemd-swap
+	python -m black --check --diff systemd-swap.py
 
 help: ## Show help
 	@grep -h "##" $(MAKEFILE_LIST) | grep -v grep | sed 's/\\$$//;s/##/\t/'
