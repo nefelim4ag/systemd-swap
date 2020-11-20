@@ -1,4 +1,6 @@
-.TH swap.conf 5 "OCTOBER 2020" "systemd-swap 4.4" swap.conf
+.TH SWAP.CONF 5 "NOVEMBER 2020" 4.4 swap.conf
+.\" disable french spacing
+.ss 12 0
 .SH NAME
 swap.conf \- systemd-swap configuration files.
 .SH SYNOPSIS
@@ -8,14 +10,21 @@ swap.conf \- systemd-swap configuration files.
 .IP /etc/systemd/swap.conf
 .IP /usr/share/systemd-swap/swap-default.conf
 .SH DESCRIPTION
-These configuration files control zram, zswap and swapfc.
+.PP
+These configuration files control swapd, swapfc, zram and zswap.
 .SH CONFIGURATION DIRECTORIES AND PRECEDENCE
 .PP
-The default configuration is defined during compilation, so a configuration file is only needed when it is necessary to deviate from those defaults. By default, the configuration file in /etc/systemd/ contains commented out entries showing the defaults as a guide to the administrator. This file can be edited to create local overrides.
+The default configuration is defined during compilation, so a configuration file is only needed when it is necessary to deviate from those defaults.
+By default, the configuration file in /etc/systemd/ contains commented out entries showing the defaults as a guide to the administrator.
+This file can be edited to create local overrides.
 .PP
-When packages need to customize the configuration, they can install configuration snippets in /usr/lib/systemd/swap.conf.d/. The main configuration file is read before any of the configuration directories, and has the lowest precedence; entries in a file in any configuration directory override entries in the single configuration file. Files in the swap.conf.d/ configuration subdirectories are sorted by their filename in lexicographic order, regardless of in which of the subdirectories they reside. When multiple files specify the same option, for options which accept just a single value, the entry in the file with the lexicographically latest name takes precedence.
+When packages need to customize the configuration, they can install configuration snippets in /usr/lib/systemd/swap.conf.d/.
+The main configuration file is read before any of the configuration directories, and has the lowest precedence; entries in a file in any configuration directory override entries in the single configuration file.
+Files in the swap.conf.d/ configuration subdirectories are sorted by their filename in lexicographic order, regardless of in which of the subdirectories they reside.
+When multiple files specify the same option, for options which accept just a single value, the entry in the file with the lexicographically latest name takes precedence.
 .PP
-Files in /etc/ are reserved for the local administrator, who may use this logic to override the configuration files installed by vendor packages. It is recommended to prefix all filenames in those subdirectories with a two-digit number and a dash, to simplify the ordering of the files.
+Files in /etc/ are reserved for the local administrator, who may use this logic to override the configuration files installed by vendor packages.
+It is recommended to prefix all filenames in those subdirectories with a two-digit number and a dash, to simplify the ordering of the files.
 .PP
 To disable a configuration file supplied by the vendor, the recommended way is to place a symlink to /dev/null in the configuration directory in /etc/, with the same filename as the vendor configuration file.
 .SH OPTIONS
@@ -29,12 +38,12 @@ for swap files and swap partitions.
 .I
 .IP zswap_compressor=
 Compressor algorithm for zswap, Linux currently supports
-.B lzo,
-.B lz4,
-.B zstd,
+.BR lzo ,
+.BR lz4 ,
+.BR zstd ,
 .B zlo-rle
 and
-.B zl4hc.
+.BR zl4hc .
 .I
 .IP zswap_max_pool_percent=
 Percentage of ram that can be compressed.
@@ -45,7 +54,8 @@ Set wich compressed memory pool to use, if unsure use z3fold.
 The following options are available in the "zram" section:
 .I
 .IP zram_enabled=
-Whether zram is enabled, set to yes/y/1/true to enable zram. Zram is a compressed
+Whether zram is enabled, set to yes/y/1/true to enable zram.
+Zram is a compressed
 .B ram
 disk.
 .I
@@ -53,16 +63,17 @@ disk.
 Set the ammount of memory per zram device.
 .I
 .IP zram_count=
-Set the ammount of zram devices. (IGNORED IF KVER > 4.8, TO BE REMOVED)
+Set the ammount of zram devices.
+(IGNORED IF KVER > 4.8, TO BE REMOVED)
 .I
 .IP zram_alg=
 Compressor algorithm for zram, Linux currently supports
-.B lzo,
-.B lz4,
-.B zstd,
+.BR lzo ,
+.BR lz4 ,
+.BR zstd ,
 .B zlo-rle
 and
-.B zl4hc.
+.BR zl4hc .
 .I
 .IP zram_prio=
 Set the swap priority for zram devices.
@@ -70,10 +81,12 @@ Set the swap priority for zram devices.
 The following options are available in the "swapfc" section:
 .I
 .IP swapfc_enabled=
-Whether swapfc is enabled, set to yes/y/1/true to enable swapfc. Swapfc stands for "swap file chunked" and dynamically allocates new swap files when memory is running low and removes its swap files when not in use.
+Whether swapfc is enabled, set to yes/y/1/true to enable swapfc.
+Swapfc stands for "swap file chunked" and dynamically allocates new swap files when memory is running low and removes its swap files when not in use.
 .I
 .IP swapfc_force_use_loop=
-Whether swapfc should always create swap files on loopback devices. Usefull on if kernel doesn't support swapfiles on btrfs (<5.0), don't use unless you're sure what you are doing
+Whether swapfc should always create swap files on loopback devices.
+Usefull on if kernel doesn't support swapfiles on btrfs (<5.0), don't use unless you're sure what you are doing.
 .I
 .IP swapfc_frequency=
 The frequency in seconds swapfc should run at.
@@ -82,13 +95,16 @@ The frequency in seconds swapfc should run at.
 Size of the swap files created by swapfc.
 .I
 .IP swapfc_max_count=
-Maximum number of swap files swapfc should create. (Note that Linux by defaults only supports 32.)
+Maximum number of swap files swapfc should create.
+(Note that most Linux distributions only support 32.)
 .I
 .IP swapfc_min_count=
-Minimum number of swap files swapfc should create on startup. Defaults to 0 to only allocate swap files when running lon free memory.
+Minimum number of swap files swapfc should create on startup.
+Defaults to 0 to only allocate swap files when running lon free memory.
 .I
 .IP swapfc_free_ram_perc=
-Ammount of memory free (in percent) when swapfc creates a new swap file. (Note that this applies only to the first swap file.)
+Ammount of memory free (in percent) when swapfc creates a new swap file.
+(Note that this applies only to the first swap file.)
 .I
 .IP swapfc_free_swap_perc=
 Ammount of swap free (in percent) when swapfc creates a new swap file.
@@ -97,7 +113,8 @@ Ammount of swap free (in percent) when swapfc creates a new swap file.
 Ammount of swap free (in percent) when swapfc removes a swap file.
 .I
 .IP swapfc_priority=
-The priority given to swapfiles created by swapfc (decreasing by one for every swap file created). When at 0 it skips to -2. Max 32767.
+The priority given to swapfiles created by swapfc (decreasing by one for every swap file created).
+When at 0 it skips to -2. Max 32767.
 .I
 .IP swapfc_path=
 Path to folder where swapfc creates its swap files.
