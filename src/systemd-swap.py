@@ -771,20 +771,14 @@ def stop(on_init: bool = False) -> None:
             warn(f"{sys.argv[0]} might not be running")
     destroy_info = DestroyInfo.load()
     swap_units = find_swap_units()
-    # TODO: fix "swap_unit_found" workaround properly
     swap_unit_found = None
-    for unit_path in filter(lambda u: "swapd" in read(u), swap_units):
-        swapoff(unit_path, "swapD")
-        swap_unit_found = True
-    if swap_unit_found == True:
-        swap_units = find_swap_units()
-    for unit_path in filter(lambda u: "swapfc" in read(u), swap_units):
-        swapoff(unit_path, "swapFC")
-        swap_unit_found = True
-    if swap_unit_found == True:
-        swap_units = find_swap_units()
-    for unit_path in filter(lambda u: "zram" in read(u), swap_units):
-        swapoff(unit_path, "Zram")
+    for i in ["swapD", "swapFC", "Zram"]:
+        for unit_path in filter(lambda u, ix=i: ix.lower() in read(u), swap_units):
+            swapoff(unit_path, i)
+            swap_unit_found = True
+        if swap_unit_found:
+            swap_units = find_swap_units()
+            swap_unit_found = False
     if destroy_info:
         if os.path.isdir(f"{WORK_DIR}/zswap"):
             info("Zswap: restore configuration: start")
