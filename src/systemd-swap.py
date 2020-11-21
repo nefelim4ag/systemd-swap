@@ -1,5 +1,7 @@
 #!/usr/bin/python3 -u
 
+# -*- coding: utf-8 -*-
+#
 # Copyright 2020, Timofey Titovets and the systemd-swap contributors
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -18,7 +20,7 @@ import sys
 import threading
 import time
 import types
-from typing import *  # pylint: disable=unused-wildcard-import
+from typing import List, Dict, Type, Optional, Tuple, NoReturn
 
 import systemd.daemon
 import sysv_ipc
@@ -74,14 +76,14 @@ class Config:
         if os.path.isfile(DEF_CONFIG):
             try:
                 self.config.update(Config.parse_config(DEF_CONFIG))
-            except:
+            except OSError:
                 error(f"Error loading {DEF_CONFIG}")
         # Config precedence follows systemd scheme:
         # etc > run > lib for all fragments > /etc/systemd/swap.conf
         if os.path.isfile(ETC_CONFIG):
             try:
                 self.config.update(Config.parse_config(ETC_CONFIG))
-            except:
+            except OSError:
                 warn(f"Could not load {DEF_CONFIG}")
         config_files = {}
         for path in [VEN_SYSD, RUN_SYSD, ETC_SYSD]:

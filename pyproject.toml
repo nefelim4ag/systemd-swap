@@ -2,3 +2,11 @@
 line-length = 88
 target-version = ['py37', 'py38']
 include = 'systemd-swap.py$'
+
+[tool.pylint.test]
+max-line-length = 88
+disable = [
+    "C0114",
+    "C0115",
+    "C0116"
+]
