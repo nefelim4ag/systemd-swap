@@ -1,6 +1,10 @@
 # systemd-swap
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
+## ⚠️ Current code quality and commit frequency is low ⚠️
+
+### Users should migrate to [systemd/zram-generator](https://github.com/systemd/zram-generator) since zram should be enough in most systems
+
 Script to manage swap on:
 
 - [zswap](https://www.kernel.org/doc/Documentation/vm/zswap.txt) - Enable/Configure
@@ -80,19 +84,13 @@ sudo systemctl enable --now systemd-swap
 **A**: Nope, as you wish really, native swapfile should work faster and it's safer in OOM condition in comparison to loop backed scenario.
 
 **Q**: When would we want a certain configuration?\
-**A**: In most cases (Notebook, Desktop, Server) it's enough to enable zswap + swapfc (on server tuning of swapfc can be needed). If you use a SSD and care about flash memory wear, use only ZRam.
+**A**: In most cases zram is enough since it on average compresses 2-3x and is much faster than disk based swap.
+
+**Q**: How many zram devices should one use?
+**A**: If you are not using an ancient kernel (pre 4.7) there's no benefit from using multiple zram devices.
 
 **Q**: Can we use this to enable hibernation?\
 **A**: Nope as hibernation wants a persistent fs blocks and wants access to swap data directly from disk, this will not work on: _swapfc_ (without some magic of course, see [#85](https://github.com/Nefelim4ag/systemd-swap/issues/85)).
-
-## Note
-
-- :information_source: Zram dependence: util-linux >= 2.26
-- :information_source: If you use zram not for swap only, use kernel 4.2+ or please add rule for modprobe like:
-
-  ```ini
-  options zram max_devices=32
-  ```
 
 ## Switch on systemd-swap:s automatic swap management
 
