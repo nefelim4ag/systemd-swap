@@ -657,9 +657,8 @@ def start() -> None:
                 ).stdout.rstrip()
                 if "failed to reset: Device or resource busy" in output:
                     continue
-                else:
-                    success = True
-                    break
+                success = True
+                break
             # Try limit reached.
             if not success:
                 warn("Zram: device or resource was busy too many times")
