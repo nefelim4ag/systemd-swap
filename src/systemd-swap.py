@@ -850,20 +850,18 @@ def status() -> None:
         swapon = subprocess.run(
             ["swapon", "--raw"], check=True, text=True, stdout=subprocess.PIPE
         ).stdout.splitlines()
-        swapd_info = ""
-        for line in swapon:
-            if not re.search("zram|file|loop", line):  # pylint: disable=no-member
-                swapd_info += f". {line}\n"
+        swapd_info = "".join(
+            [f". {line}\n" for line in swapon if not re.search("zram|file|loop", line)]
+        )
         print("swapD:")
         subprocess.run(["column", "-t"], input=swapd_info, text=True)
     if os.path.isdir(f"{WORK_DIR}/swapfc"):
         swapon = subprocess.run(
             ["swapon", "--raw"], check=True, text=True, stdout=subprocess.PIPE
         ).stdout.splitlines()
-        swapfc_info = ""
-        for line in swapon:
-            if re.search("NAME|file|loop", line):  # pylint: disable=no-member
-                swapfc_info += f". {line}\n"
+        swapfc_info = "".join(
+            [f". {line}\n" for line in swapon if re.search("NAME|file|loop", line)]
+        )
         print("swapFC:")
         subprocess.run(["column", "-t"], input=swapfc_info, text=True)
 
