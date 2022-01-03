@@ -312,12 +312,12 @@ class SwapFc:
         swapfile = self.prepare_swapfile(
             os.path.join(self.swapfc_path, str(self.allocated))
         )
-        subprocess.run(
+        mkswap_result = subprocess.run(
             ["mkswap", "-L", f"SWAP_{self.fs_type}_{self.allocated}", swapfile],
-            check=True,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
         )
+        if mkswap_result.returncode:
+            error(f"swapFC: mkswap failed with code {mkswap_result.returncode}")
         options = "discard" if not self.swapfc_force_preallocated else None
         unit_name = gen_swap_unit(
             what=swapfile,
@@ -364,6 +364,14 @@ class SwapFc:
         with open(path, "wb") as swapfile:
             for _ in range(round(self.chunk_size / (1024 * 1024))):
                 swapfile.write(zeros)
+                swapfile.flush()
+            remaining_bytes_to_zero_out = self.chunk_size % (1024 * 1024)
+            if remaining_bytes_to_zero_out:
+                warn(
+                    "swapFC: chunk size not set to multiple of 1 MiB, current chunk "
+                    f"size = {self.chunk_size} byte(s)"
+                )
+                swapfile.write(b"\x00" * remaining_bytes_to_zero_out)
                 swapfile.flush()
         return path if not self.swapfc_force_use_loop else self.losetup_w(path)
 
