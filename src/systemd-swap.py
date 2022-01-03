@@ -198,7 +198,7 @@ class SwapFc:
         makedirs(f"{WORK_DIR}/swapfc")
         self.allocated = 0
         for _ in range(self.swapfc_min_count):
-            self.create_swapfile("swapFC: allocate chunk: ")
+            self.create_swapfile()
 
     def run(self) -> None:
         systemd.daemon.notify("READY=1")
@@ -222,29 +222,34 @@ class SwapFc:
             if self.allocated == 0:
                 curr_free_ram_perc = self.get_free_ram_perc()
                 if curr_free_ram_perc < self.swapfc_free_ram_perc:
-                    self.create_swapfile(
-                        f"swapFC: free ram: {curr_free_ram_perc} < "
-                        f"{self.swapfc_free_ram_perc} - allocate chunk: "
+                    info(
+                        f"swapFC: free RAM ({curr_free_ram_perc}%) less than minimum "
+                        f"desired free RAM ({self.swapfc_free_ram_perc}%) - allocate "
+                        "first chunk"
                     )
+                    self.create_swapfile()
                 continue
             curr_free_swap_perc = self.get_free_swap_perc()
             if (
                 curr_free_swap_perc < self.swapfc_free_swap_perc
                 and self.allocated < self.swapfc_max_count
             ):
-                self.create_swapfile(
-                    f"swapFC: free swap: {curr_free_swap_perc} < "
-                    f"{self.swapfc_free_swap_perc} - allocate chunk: "
+                info(
+                    f"swapFC: free swap ({curr_free_swap_perc}%) less than minimum "
+                    f"desired free swap ({self.swapfc_free_swap_perc}%) - allocate "
+                    f"chunk #{self.allocated + 1}"
                 )
+                self.create_swapfile()
                 continue
             if self.allocated <= max(self.swapfc_min_count, 2):
                 continue
             if curr_free_swap_perc > self.swapfc_remove_free_swap_perc:
-                self.destroy_swapfile(
-                    f"swapFC: free swap: {curr_free_swap_perc} > "
-                    f"{self.swapfc_remove_free_swap_perc} - free up chunk: "
-                    + str(self.allocated)
+                info(
+                    f"swapFC: free swap ({curr_free_swap_perc}%) more than maximum "
+                    f"desired free swap ({self.swapfc_remove_free_swap_perc}%) - free "
+                    f"up chunk #{self.allocated}"
                 )
+                self.destroy_swapfile()
 
     def get_fs_type(self) -> Tuple[str, bool]:
         subvolume = False
@@ -297,7 +302,7 @@ class SwapFc:
             "swapfc_remove_free_swap_perc", int
         )
 
-    def create_swapfile(self, msg: str) -> None:
+    def create_swapfile(self) -> None:
         if not self.has_enough_space(self.swapfc_path):
             warn("swapFC: ENOSPC")
             # Prevent spamming the journal.
@@ -308,7 +313,9 @@ class SwapFc:
         self.reset_polling_rate()
         systemd.daemon.notify("STATUS=Allocating swap file...")
         self.allocated += 1
-        info(f"{msg} {self.allocated}")
+        info(
+            f"swapFC: allocating chunk {self.allocated} (size: {self.chunk_size} byte(s))..."
+        )
         swapfile = self.prepare_swapfile(
             os.path.join(self.swapfc_path, str(self.allocated))
         )
@@ -380,9 +387,8 @@ class SwapFc:
         os.remove(path)
         return file
 
-    def destroy_swapfile(self, msg: str) -> None:
+    def destroy_swapfile(self) -> None:
         systemd.daemon.notify("STATUS=Deallocating swap file...")
-        info(msg)
         for unit_path in find_swap_units():
             content = None
             with open(unit_path) as f:
@@ -670,7 +676,7 @@ def start() -> None:
                 if not os.path.isfile("/sys/class/zram-control/hot_add"):
                     error(
                         "Zram: this kernel does not support hot adding zram devices, "
-                        "please use a 4.2+ kernel or see 'modinfo zram´ and create a "
+                        "please use a 4.2+ kernel or see 'modinfo zram' and create a "
                         "modprobe rule"
                     )
                 new_zram = read("/sys/class/zram-control/hot_add").rstrip()
