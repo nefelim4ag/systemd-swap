@@ -166,13 +166,23 @@ class SwapFc:
         # Create parent directories for swapfc_path.
         makedirs(os.path.dirname(self.swapfc_path))
         self.fs_type, subvolume = self.get_fs_type()
-        if self.fs_type == "btrfs" and self.subvolume_possible(subvolume):
-            subprocess.run(
-                ["btrfs", "subvolume", "create", self.swapfc_path],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+        if self.fs_type == "btrfs":
+            if not subvolume:
+                if os.path.exists(self.swapfc_path):
+                    warn(
+                        "swapFC: swapfc_path is an existing btrfs inode but not a "
+                        "subvolume, removing..."
+                    )
+                    if os.path.isdir(self.swapfc_path):
+                        shutil.rmtree(self.swapfc_path)
+                    else:
+                        os.remove(self.swapfc_path)
+                subprocess.run(
+                    ["btrfs", "subvolume", "create", self.swapfc_path],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
         else:
             makedirs(self.swapfc_path)
         self.chunk_size = int(
@@ -280,9 +290,6 @@ class SwapFc:
             else:
                 error("swapfc_path is located on an unknown filesystem")
         return fs_type, subvolume
-
-    def subvolume_possible(self, subvolume: bool):
-        return not subvolume and not os.path.exists(self.swapfc_path)
 
     def assign_config(self, config: Config) -> None:
         yn = lambda x: config.get(x, bool)
